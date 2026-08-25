@@ -1,0 +1,17 @@
+# Local dev config — advertises 127.0.0.1 so browsers on Windows/WSL can connect WebRTC.
+port: 7880
+bind_addresses:
+  - ""
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  use_external_ip: false
+  node_ip: 127.0.0.1
+
+keys:
+  devkey: secret
+
+logging:
+  level: info
