@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\ParticipantRole;
 use App\Enums\ParticipantStatus;
+use App\Enums\RecordingPermissionStatus;
+use App\Enums\ScreenSharePermissionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,6 +18,9 @@ class MeetingParticipant extends Model
         'identity',
         'role',
         'status',
+        'recording_permission',
+        'screen_share_permission',
+        'hand_raised',
         'admit_token',
         'joined_at',
         'left_at',
@@ -26,6 +31,9 @@ class MeetingParticipant extends Model
         return [
             'role' => ParticipantRole::class,
             'status' => ParticipantStatus::class,
+            'recording_permission' => RecordingPermissionStatus::class,
+            'screen_share_permission' => ScreenSharePermissionStatus::class,
+            'hand_raised' => 'boolean',
             'joined_at' => 'datetime',
             'left_at' => 'datetime',
         ];
@@ -49,5 +57,15 @@ class MeetingParticipant extends Model
     public function isWaiting(): bool
     {
         return $this->status === ParticipantStatus::Waiting;
+    }
+
+    public function canRecord(): bool
+    {
+        return $this->recording_permission === RecordingPermissionStatus::Approved;
+    }
+
+    public function canShareScreen(): bool
+    {
+        return $this->screen_share_permission === ScreenSharePermissionStatus::Approved;
     }
 }

@@ -3,6 +3,19 @@
 import { Button } from "@/components/ui/button";
 import { BackgroundControls } from "@/components/meeting/background-controls";
 import { ParticipantsSidebar } from "@/components/meeting/participants-sidebar";
+import { RecordingControls } from "@/components/meeting/recording-controls";
+import { RecordingSyncProvider } from "@/components/meeting/recording-sync";
+import { ScreenShareSyncProvider } from "@/components/meeting/screen-share-sync";
+import { HandRaiseProvider } from "@/components/meeting/hand-raise-sync";
+import { HandRaiseControls } from "@/components/meeting/hand-raise-controls";
+import { ScreenShareControls } from "@/components/meeting/screen-share-controls";
+import {
+  ScreenShareHighlighterControls,
+  ScreenShareHighlighterOverlay,
+} from "@/components/meeting/screen-share-highlighter";
+import { ScreenShareHighlighterProvider } from "@/components/meeting/screen-share-highlighter-sync";
+import { WhiteboardPanel } from "@/components/meeting/whiteboard-panel";
+import { WhiteboardSyncProvider } from "@/components/meeting/whiteboard-sync";
 import { MeetingToasts, useToasts } from "@/components/meeting/meeting-toasts";
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -22,8 +35,10 @@ import {
   RefreshCw,
   AlertCircle,
   Users,
+  PenLine,
 } from "lucide-react";
 import { HD_ROOM_OPTIONS, HD_VIDEO_CAPTURE } from "@/lib/livekit-options";
+import type { RecordingPermissionStatus, ScreenSharePermissionStatus } from "@/types";
 
 type MeetingRoomProps = {
   token: string;
@@ -32,8 +47,11 @@ type MeetingRoomProps = {
   meetingTitle: string;
   meetingCode: string;
   isHost: boolean;
+  hostIdentity?: string;
   admitToken?: string;
   identity?: string;
+  recordingPermission?: RecordingPermissionStatus;
+  screenSharePermission?: ScreenSharePermissionStatus;
   onLeave: () => void;
   onEndMeeting: () => void;
 };
@@ -97,16 +115,28 @@ function MeetingChrome({
   meetingTitle,
   meetingCode,
   isHost,
+  hostIdentity,
   admitToken,
   identity,
+  recordingPermission = "none",
+  screenSharePermission = "none",
   onLeave,
   onEndMeeting,
 }: Omit<MeetingRoomProps, "token" | "serverUrl" | "roomName">) {
   const [copied, setCopied] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [waitingCount, setWaitingCount] = useState(0);
+  const [recordingRequestCount, setRecordingRequestCount] = useState(0);
+  const [screenShareRequestCount, setScreenShareRequestCount] = useState(0);
   const prevWaitingRef = useRef(0);
+  const prevRecordingRef = useRef(0);
   const { toasts, pushToast, dismissToast } = useToasts();
+  const room = useRoomContext();
+
+  const localIdentity = identity ?? room.localParticipant.identity;
+  const localName =
+    room.localParticipant.name || room.localParticipant.identity || "You";
 
   const joinUrl =
     typeof window !== "undefined"
@@ -144,8 +174,58 @@ function MeetingChrome({
     prevWaitingRef.current = waitingCount;
   }, [waitingCount, isHost, pushToast]);
 
+  useEffect(() => {
+    if (isHost && recordingRequestCount > prevRecordingRef.current) {
+      const added = recordingRequestCount - prevRecordingRef.current;
+      pushToast(
+        added === 1
+          ? "Someone requested to record"
+          : `${added} people requested to record`,
+        "info",
+      );
+    }
+    prevRecordingRef.current = recordingRequestCount;
+  }, [recordingRequestCount, isHost, pushToast]);
+
+  const prevScreenShareRef = useRef(0);
+  useEffect(() => {
+    if (isHost && screenShareRequestCount > prevScreenShareRef.current) {
+      const added = screenShareRequestCount - prevScreenShareRef.current;
+      pushToast(
+        added === 1
+          ? "Someone requested to share screen"
+          : `${added} people requested to share screen`,
+        "info",
+      );
+    }
+    prevScreenShareRef.current = screenShareRequestCount;
+  }, [screenShareRequestCount, isHost, pushToast]);
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <RecordingSyncProvider
+      localIdentity={localIdentity}
+      localName={localName}
+      initialPermission={isHost ? "approved" : recordingPermission}
+      onToast={pushToast}
+    >
+      <ScreenShareSyncProvider
+        localIdentity={localIdentity}
+        initialPermission={isHost ? "approved" : screenSharePermission}
+        onToast={pushToast}
+      >
+        <HandRaiseProvider
+          localIdentity={localIdentity}
+          localName={localName}
+          onToast={pushToast}
+        >
+        <WhiteboardSyncProvider
+          localIdentity={localIdentity}
+          localName={localName}
+          isHost={isHost}
+          onToast={pushToast}
+        >
+        <ScreenShareHighlighterProvider localIdentity={localIdentity}>
+      <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--meet-border)] px-4">
         <div className="min-w-0">
           <p className="truncate font-medium text-[var(--meet-text)]">
@@ -156,6 +236,30 @@ function MeetingChrome({
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <HandRaiseControls />
+          <ScreenShareControls
+            meetingCode={meetingCode}
+            isHost={isHost}
+            admitToken={admitToken}
+            identity={identity}
+            onToast={pushToast}
+          />
+          <ScreenShareHighlighterControls disabled={whiteboardOpen} />
+          <Button
+            size="sm"
+            variant={whiteboardOpen ? "primary" : "secondary"}
+            onClick={() => setWhiteboardOpen((v) => !v)}
+          >
+            <PenLine className="h-4 w-4" />
+            Whiteboard
+          </Button>
+          <RecordingControls
+            meetingCode={meetingCode}
+            isHost={isHost}
+            admitToken={admitToken}
+            identity={identity}
+            onToast={pushToast}
+          />
           <BackgroundControls />
           <Button
             size="sm"
@@ -167,6 +271,16 @@ function MeetingChrome({
             {isHost && waitingCount > 0 ? (
               <span className="ml-1 rounded-full bg-[var(--meet-danger)] px-1.5 text-[10px] text-white">
                 {waitingCount}
+              </span>
+            ) : null}
+            {isHost && recordingRequestCount > 0 ? (
+              <span className="ml-1 rounded-full bg-[var(--meet-danger)]/80 px-1.5 text-[10px] text-white">
+                {recordingRequestCount}
+              </span>
+            ) : null}
+            {isHost && screenShareRequestCount > 0 ? (
+              <span className="ml-1 rounded-full bg-[var(--meet-primary-strong)] px-1.5 text-[10px] text-white">
+                {screenShareRequestCount}
               </span>
             ) : null}
           </Button>
@@ -194,19 +308,38 @@ function MeetingChrome({
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="relative min-w-0 flex-1">
           <VideoConference />
+          <ScreenShareHighlighterOverlay
+            localIdentity={localIdentity}
+            authorName={localName}
+          />
+          <WhiteboardPanel
+            open={whiteboardOpen}
+            onClose={() => setWhiteboardOpen(false)}
+            localIdentity={localIdentity}
+            authorName={localName}
+            isHost={isHost}
+          />
           <MeetingToasts toasts={toasts} onDismiss={dismissToast} />
         </div>
         <ParticipantsSidebar
           meetingCode={meetingCode}
           isHost={isHost}
+          hostIdentity={hostIdentity}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onWaitingCountChange={setWaitingCount}
+          onRecordingRequestCountChange={setRecordingRequestCount}
+          onScreenShareRequestCountChange={setScreenShareRequestCount}
         />
       </div>
 
       <RoomEventBridge onToast={pushToast} />
-    </div>
+      </div>
+        </ScreenShareHighlighterProvider>
+        </WhiteboardSyncProvider>
+        </HandRaiseProvider>
+      </ScreenShareSyncProvider>
+    </RecordingSyncProvider>
   );
 }
 
@@ -216,8 +349,11 @@ export function MeetingRoom({
   meetingTitle,
   meetingCode,
   isHost,
+  hostIdentity,
   admitToken,
   identity,
+  recordingPermission,
+  screenSharePermission,
   onLeave,
   onEndMeeting,
 }: MeetingRoomProps) {
@@ -307,8 +443,11 @@ export function MeetingRoom({
             meetingTitle={meetingTitle}
             meetingCode={meetingCode}
             isHost={isHost}
+            hostIdentity={hostIdentity}
             admitToken={admitToken}
             identity={identity}
+            recordingPermission={recordingPermission}
+            screenSharePermission={screenSharePermission}
             onLeave={onLeave}
             onEndMeeting={onEndMeeting}
           />

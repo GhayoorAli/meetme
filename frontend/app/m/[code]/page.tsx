@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Logo } from "@/components/ui/logo";
 import { api } from "@/lib/api";
+import { getHostToken, getGuestHostName, clearHostToken } from "@/lib/host-token";
+import {
+  clearAdmitToken,
+  getAdmitToken,
+  saveAdmitToken,
+} from "@/lib/admit-token";
 import { useAuth } from "@/lib/auth-context";
 import { formatMeetingCode } from "@/lib/utils";
 import type { JoinMeetingResponse, Meeting } from "@/types";
@@ -29,7 +35,12 @@ export default function MeetingPage() {
   const [error, setError] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [inCall, setInCall] = useState(false);
+  const [restoring, setRestoring] = useState(true);
   const admitTokenRef = useRef<string | null>(null);
+  const autoJoinRef = useRef(false);
+
+  const isGuestHost = !!getHostToken(code);
+  const savedGuestName = getGuestHostName(code);
 
   useEffect(() => {
     if (rawCode && code && formatMeetingCode(decodeURIComponent(rawCode)) !== rawCode) {
@@ -59,8 +70,143 @@ export default function MeetingPage() {
   }, [loadMeeting]);
 
   useEffect(() => {
-    if (user?.name) setDisplayName(user.name);
-  }, [user]);
+    if (loading || !meeting || meeting.status === "ended") {
+      if (!loading) {
+        setRestoring(false);
+      }
+      return;
+    }
+
+    if (isGuestHost) {
+      setRestoring(false);
+      return;
+    }
+
+    const savedToken = getAdmitToken(code);
+    if (!savedToken) {
+      setRestoring(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function restoreSession() {
+      try {
+        admitTokenRef.current = savedToken;
+        const status = await api.getJoinStatus(code, savedToken!);
+
+        if (cancelled) return;
+
+        if (status.status === "admitted" && status.livekit) {
+          setJoinData(status);
+          setInCall(true);
+        } else if (status.status === "waiting") {
+          setJoinData(status);
+          setWaiting(true);
+        } else {
+          clearAdmitToken(code);
+          admitTokenRef.current = null;
+        }
+      } catch {
+        if (!cancelled) {
+          clearAdmitToken(code);
+          admitTokenRef.current = null;
+        }
+      } finally {
+        if (!cancelled) {
+          setRestoring(false);
+        }
+      }
+    }
+
+    void restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, meeting, code, isGuestHost]);
+
+  useEffect(() => {
+    if (user?.name) {
+      setDisplayName(user.name);
+    } else if (savedGuestName) {
+      setDisplayName(savedGuestName);
+    }
+  }, [user, savedGuestName]);
+
+  const handleJoinWithName = useCallback(
+    async (name: string) => {
+      setJoining(true);
+      setError("");
+      try {
+        const data = await api.joinMeeting(code, {
+          displayName: user ? undefined : name,
+        });
+
+        if (data.status === "waiting") {
+          const token = data.participant.admit_token ?? null;
+          admitTokenRef.current = token;
+          if (token) saveAdmitToken(code, token);
+          setJoinData(data);
+          setWaiting(true);
+          return;
+        }
+
+        if (data.status === "admitted" && data.livekit) {
+          const token = data.participant.admit_token ?? null;
+          admitTokenRef.current = token;
+          if (token) saveAdmitToken(code, token);
+          setJoinData(data);
+          setInCall(true);
+          return;
+        }
+
+        setError(data.message ?? "Could not join meeting.");
+        autoJoinRef.current = false;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not join meeting.",
+        );
+        autoJoinRef.current = false;
+      } finally {
+        setJoining(false);
+      }
+    },
+    [code, user],
+  );
+
+  useEffect(() => {
+    if (
+      autoJoinRef.current ||
+      loading ||
+      !meeting ||
+      meeting.status === "ended" ||
+      inCall ||
+      waiting ||
+      joining
+    ) {
+      return;
+    }
+
+    const name = user?.name ?? savedGuestName ?? displayName;
+    const shouldAutoJoin = isGuestHost && !user && name.trim().length >= 2;
+
+    if (shouldAutoJoin) {
+      autoJoinRef.current = true;
+      void handleJoinWithName(name);
+    }
+  }, [
+    loading,
+    meeting,
+    isGuestHost,
+    user,
+    savedGuestName,
+    displayName,
+    inCall,
+    waiting,
+    joining,
+    handleJoinWithName,
+  ]);
 
   useEffect(() => {
     if (!waiting || !admitTokenRef.current) return;
@@ -69,10 +215,14 @@ export default function MeetingPage() {
       try {
         const status = await api.getJoinStatus(code, admitTokenRef.current!);
         if (status.status === "admitted" && status.livekit) {
+          const token = status.participant.admit_token ?? admitTokenRef.current;
+          if (token) saveAdmitToken(code, token);
           setJoinData(status);
           setWaiting(false);
           setInCall(true);
         } else if (status.status === "denied") {
+          clearAdmitToken(code);
+          admitTokenRef.current = null;
           setWaiting(false);
           setError("The host denied your request to join.");
         }
@@ -85,34 +235,7 @@ export default function MeetingPage() {
   }, [waiting, code]);
 
   async function handleJoin() {
-    setJoining(true);
-    setError("");
-    try {
-      const data = await api.joinMeeting(
-        code,
-        user ? undefined : displayName,
-      );
-
-      if (data.status === "waiting") {
-        admitTokenRef.current = data.participant.admit_token ?? null;
-        setJoinData(data);
-        setWaiting(true);
-        return;
-      }
-
-      if (data.status === "admitted" && data.livekit) {
-        admitTokenRef.current = data.participant.admit_token ?? null;
-        setJoinData(data);
-        setInCall(true);
-        return;
-      }
-
-      setError(data.message ?? "Could not join meeting.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not join meeting.");
-    } finally {
-      setJoining(false);
-    }
+    await handleJoinWithName(user ? user.name : displayName);
   }
 
   async function handleCancelWaiting() {
@@ -126,12 +249,17 @@ export default function MeetingPage() {
     setWaiting(false);
     setJoinData(null);
     admitTokenRef.current = null;
+    clearAdmitToken(code);
   }
 
   async function handleLeave() {
     setInCall(false);
     setJoinData(null);
     admitTokenRef.current = null;
+    clearAdmitToken(code);
+    if (isGuestHost) {
+      clearHostToken(code);
+    }
     router.push(user ? "/dashboard" : "/");
   }
 
@@ -144,7 +272,7 @@ export default function MeetingPage() {
     }
   }
 
-  if (loading) {
+  if (loading || restoring) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--meet-bg)]">
         <Spinner />
@@ -161,8 +289,16 @@ export default function MeetingPage() {
         meetingTitle={joinData.meeting.title}
         meetingCode={code}
         isHost={joinData.participant.role === "host"}
+        hostIdentity={
+          joinData.host_identity ??
+          (joinData.participant.role === "host"
+            ? joinData.participant.identity
+            : undefined)
+        }
         admitToken={joinData.participant.admit_token}
         identity={joinData.participant.identity}
+        recordingPermission={joinData.participant.recording_permission ?? "none"}
+        screenSharePermission={joinData.participant.screen_share_permission ?? "none"}
         onLeave={handleLeave}
         onEndMeeting={handleEndMeeting}
       />
@@ -205,19 +341,34 @@ export default function MeetingPage() {
               </Button>
             </div>
           ) : meeting && meeting.status !== "ended" ? (
+            isGuestHost && savedGuestName && joining && !error ? (
+              <div className="py-8 text-center">
+                <Spinner />
+                <CardTitle className="mt-6">Joining your meeting</CardTitle>
+                <p className="mt-2 text-sm text-[var(--meet-text-muted)]">
+                  Entering as{" "}
+                  <strong className="text-[var(--meet-text)]">
+                    {savedGuestName}
+                  </strong>
+                  …
+                </p>
+              </div>
+            ) : (
             <>
               <CardTitle>{meeting.title}</CardTitle>
               <p className="mt-2 text-sm text-[var(--meet-text-muted)]">
-                Hosted by {meeting.host?.name ?? "Unknown"} ·{" "}
+                Hosted by {meeting.host?.name ?? (getHostToken(code) ? "Guest host" : "Unknown")} ·{" "}
                 <span className="font-mono">{meeting.code}</span>
               </p>
-              {meeting.waiting_room_enabled ? (
+              {meeting.waiting_room_enabled &&
+              !(user && meeting.host_id === user.id) &&
+              !getHostToken(code) ? (
                 <p className="mt-3 text-xs text-[var(--meet-text-muted)]">
                   Waiting room is on — the host will admit you before you enter.
                 </p>
               ) : null}
 
-              {!user ? (
+              {!user && !(isGuestHost && savedGuestName) ? (
                 <div className="mt-6">
                   <label className="mb-1.5 block text-sm text-[var(--meet-text-muted)]">
                     Your name
@@ -229,12 +380,19 @@ export default function MeetingPage() {
                     minLength={2}
                   />
                 </div>
-              ) : (
+              ) : !user && isGuestHost && savedGuestName ? (
+                <p className="mt-6 text-sm text-[var(--meet-text-muted)]">
+                  Joining as{" "}
+                  <strong className="text-[var(--meet-text)]">
+                    {savedGuestName}
+                  </strong>
+                </p>
+              ) : user ? (
                 <p className="mt-6 text-sm text-[var(--meet-text-muted)]">
                   Joining as{" "}
                   <strong className="text-[var(--meet-text)]">{user.name}</strong>
                 </p>
-              )}
+              ) : null}
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button
@@ -245,7 +403,7 @@ export default function MeetingPage() {
                   disabled={!user && displayName.trim().length < 2}
                 >
                   <Video className="h-5 w-5" />
-                  {user && meeting.host_id === user.id
+                  {((user && meeting.host_id === user.id) || getHostToken(code))
                     ? "Join now"
                     : meeting.waiting_room_enabled
                       ? "Ask to join"
@@ -260,6 +418,7 @@ export default function MeetingPage() {
                 </Button>
               </div>
             </>
+            )
           ) : meeting && meeting.status === "ended" ? (
             <div className="text-center py-4">
               <p className="mb-4 text-[var(--meet-text-muted)]">
