@@ -3,6 +3,8 @@
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { saveHostToken, saveGuestHostName } from "@/lib/host-token";
 import { useAuth } from "@/lib/auth-context";
 import { formatMeetingCode } from "@/lib/utils";
 import Link from "next/link";
@@ -13,12 +15,17 @@ import {
   Users,
   Shield,
   Zap,
+  UserRound,
 } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
+  const [guestName, setGuestName] = useState("");
+  const [guestStarting, setGuestStarting] = useState(false);
+  const [guestError, setGuestError] = useState("");
+  const [showGuestForm, setShowGuestForm] = useState(false);
 
   async function handleNewMeeting() {
     if (!user) {
@@ -26,6 +33,30 @@ export default function HomePage() {
       return;
     }
     router.push("/dashboard");
+  }
+
+  async function handleGuestMeeting(e: React.FormEvent) {
+    e.preventDefault();
+    setGuestError("");
+    if (guestName.trim().length < 2) {
+      setGuestError("Enter your name (at least 2 characters).");
+      return;
+    }
+    setGuestStarting(true);
+    try {
+      const { meeting, host_token } = await api.createGuestMeeting(
+        guestName.trim(),
+      );
+      saveHostToken(meeting.code, host_token);
+      saveGuestHostName(meeting.code, guestName.trim());
+      router.push(`/m/${meeting.code}`);
+    } catch (err) {
+      setGuestError(
+        err instanceof Error ? err.message : "Could not start meeting.",
+      );
+    } finally {
+      setGuestStarting(false);
+    }
   }
 
   function handleJoin(e: React.FormEvent) {
@@ -69,7 +100,43 @@ export default function HomePage() {
                     <Video className="h-5 w-5" />
                     New meeting
                   </Button>
+                  <Button
+                    size="lg"
+                    className="flex-1"
+                    variant="secondary"
+                    onClick={() => setShowGuestForm((v) => !v)}
+                  >
+                    <UserRound className="h-5 w-5" />
+                    Start as guest
+                  </Button>
                 </div>
+
+                {showGuestForm ? (
+                  <form
+                    onSubmit={handleGuestMeeting}
+                    className="mt-4 space-y-3 rounded-xl border border-[var(--meet-border)] bg-[var(--meet-bg)] p-4"
+                  >
+                    <p className="text-sm text-[var(--meet-text-muted)]">
+                      No account needed — you&apos;ll host as a guest.
+                    </p>
+                    {guestError ? (
+                      <p className="text-sm text-[var(--meet-danger)]">{guestError}</p>
+                    ) : null}
+                    <Input
+                      placeholder="Your name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      minLength={2}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      loading={guestStarting}
+                    >
+                      Start guest meeting
+                    </Button>
+                  </form>
+                ) : null}
 
                 <div className="my-6 flex items-center gap-4">
                   <div className="h-px flex-1 bg-[var(--meet-border)]" />

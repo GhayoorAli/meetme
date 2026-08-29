@@ -23,12 +23,27 @@ export type Meeting = {
 
 export type ParticipantStatus = "waiting" | "admitted" | "denied" | "left";
 
+export type RecordingPermissionStatus =
+  | "none"
+  | "pending"
+  | "approved"
+  | "denied";
+
+export type ScreenSharePermissionStatus =
+  | "none"
+  | "pending"
+  | "approved"
+  | "denied";
+
 export type MeetingParticipant = {
   id: number;
   display_name: string;
   identity?: string;
   role: "host" | "guest";
   status: ParticipantStatus;
+  recording_permission?: RecordingPermissionStatus;
+  screen_share_permission?: ScreenSharePermissionStatus;
+  hand_raised?: boolean;
   admit_token?: string;
   joined_at?: string | null;
   left_at?: string | null;
@@ -40,6 +55,8 @@ export type JoinMeetingResponse = {
   message?: string;
   meeting: Meeting;
   participant: MeetingParticipant;
+  host_identity?: string;
+  host_token?: string;
   livekit?: {
     url: string;
     token: string;

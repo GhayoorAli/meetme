@@ -50,6 +50,10 @@ body {
   border-top: 1px solid var(--meet-border) !important;
 }
 
+.lk-button[data-lk-source="screen_share"] {
+  display: none !important;
+}
+
 .lk-button {
   border-radius: 9999px !important;
 }

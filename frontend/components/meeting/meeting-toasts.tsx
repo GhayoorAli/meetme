@@ -42,6 +42,7 @@ function ToastRow({
       className={cn(
         "pointer-events-auto rounded-xl border border-[var(--meet-border)] bg-[var(--meet-surface-elevated)] px-4 py-3 text-sm text-[var(--meet-text)] shadow-lg",
         toast.tone === "warning" && "border-[var(--meet-danger)]/40",
+        toast.tone === "success" && "border-[var(--meet-success)]/40",
       )}
     >
       {toast.message}

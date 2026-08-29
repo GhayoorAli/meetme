@@ -19,12 +19,14 @@ class JoinMeetingRequest extends FormRequest
     {
         return [
             'display_name' => [
-                Rule::requiredIf(fn () => ! $this->user()),
+                Rule::requiredIf(fn () => ! $this->user() && ! $this->input('host_token')),
                 'nullable',
                 'string',
                 'min:2',
                 'max:60',
             ],
+            'host_token' => ['nullable', 'string', 'max:64'],
+            'admit_token' => ['nullable', 'string', 'max:64'],
         ];
     }
 
