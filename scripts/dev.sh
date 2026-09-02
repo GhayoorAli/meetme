@@ -3,19 +3,19 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo "==> Starting Docker stack (MySQL, LiveKit, phpMyAdmin)..."
+echo "==> Starting full Docker stack (MySQL, LiveKit, phpMyAdmin, Laravel, Next.js)..."
 cd "$ROOT"
-docker compose up -d
+docker compose up -d --build
 
 echo "==> Service status:"
 docker compose ps
 
 echo ""
-echo "MeetMe dev stack:"
-echo "  MySQL    : 127.0.0.1:3307  (meet_db / root / root)"
+echo "MeetMe is ready (Docker only — no host PHP/Node needed):"
+echo "  App       : http://localhost:3000"
+echo "  API       : http://localhost:8000"
 echo "  phpMyAdmin: http://localhost:8080"
-echo "  LiveKit  : ws://localhost:7880"
-echo "  Laravel  : cd backend && php artisan migrate && php artisan serve"
-echo "  Next.js  : cd frontend && pnpm dev"
+echo "  MySQL     : 127.0.0.1:3307  (meet_db / root / root)"
+echo "  LiveKit   : ws://localhost:7880"
 echo ""
-echo "Open http://localhost:3000"
+echo "Logs: docker compose logs -f frontend backend"

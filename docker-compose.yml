@@ -37,5 +37,66 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Laravel API — PHP 8.3 in Docker (no host PHP required)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      APP_NAME: MeetMe
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: meet_db
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      LIVEKIT_URL: ws://localhost:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      RUN_MIGRATIONS: "true"
+      PORT: "80"
+    volumes:
+      # Live code reload — host edits apply without rebuild
+      - ./backend:/var/www/html
+      # Keep vendor inside Docker (avoids host PHP / Composer)
+      - backend_vendor:/var/www/html/vendor
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Next.js UI — Node 20 + pnpm in Docker (no host Node required)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   mysql_data:
+  backend_vendor:
+  frontend_node_modules:
+  frontend_next:
