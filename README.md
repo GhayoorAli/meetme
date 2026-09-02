@@ -38,13 +38,13 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 
 ```mermaid
 flowchart TB
-    subgraph Client["Browser (Next.js)"]
-        UI[Meeting UI / Dashboard]
+    subgraph client [Browser - Next.js]
+        UI[Meeting UI and Dashboard]
         LK[LiveKit Client SDK]
         UI --> LK
     end
 
-    subgraph Backend["Laravel API"]
+    subgraph backend [Laravel API]
         API[REST API]
         Auth[Sanctum Auth]
         Token[LiveKit JWT Service]
@@ -52,15 +52,15 @@ flowchart TB
         API --> Token
     end
 
-    subgraph Data["Data & Real-time"]
+    subgraph data [Data and Real-time]
         DB[(MySQL)]
         LKS[LiveKit Server]
     end
 
-    UI -->|HTTP /api/*| API
+    UI -->|HTTP API| API
     API --> DB
     Token -->|JWT| UI
-    LK <-->|WebRTC + Data channels| LKS
+    LK <-->|WebRTC| LKS
 ```
 
 ### What the frontend handles
@@ -107,20 +107,20 @@ sequenceDiagram
     participant API as Laravel API
     participant LK as LiveKit
 
-    Host->>API: POST /meetings (or guest POST /meetings/guest)
-    API-->>Host: meeting code + host token
-    Host->>API: POST /meetings/{code}/join
-    API-->>Host: admitted + LiveKit JWT
+    Host->>API: Create meeting
+    API-->>Host: Meeting code and host token
+    Host->>API: Join meeting
+    API-->>Host: Admitted with LiveKit JWT
     Host->>LK: Connect to room
 
-    Guest->>API: POST /meetings/{code}/join
-    API-->>Guest: waiting + admit_token
-    Host->>API: POST /participants/{id}/admit
-    Guest->>API: GET /join-status?admit_token=...
-    API-->>Guest: admitted + LiveKit JWT
+    Guest->>API: Join meeting
+    API-->>Guest: Waiting with admit token
+    Host->>API: Admit participant
+    Guest->>API: Poll join status
+    API-->>Guest: Admitted with LiveKit JWT
     Guest->>LK: Connect to room
 
-    Note over Guest,API: On page refresh, admit_token<br/>from sessionStorage restores session
+    Note over Guest,API: Refresh restores session via sessionStorage
 ```
 
 1. **Host** creates a meeting (registered user or guest with name).
