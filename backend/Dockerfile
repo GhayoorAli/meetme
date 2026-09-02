@@ -1,5 +1,5 @@
 # Laravel API — production image for Render (Docker)
-FROM php:8.3-apache-bookworm
+FROM php:8.3-cli-bookworm
 
 # System deps + PHP extensions Laravel needs
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -16,20 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zip \
         bcmath \
         opcache \
-    && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
-
-# Apache document root → Laravel public/
-RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
-    && printf '%s\n' \
-        '<Directory /var/www/html/public>' \
-        '    Options Indexes FollowSymLinks' \
-        '    AllowOverride All' \
-        '    Require all granted' \
-        '</Directory>' \
-        > /etc/apache2/conf-available/laravel.conf \
-    && a2enconf laravel
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -47,15 +34,15 @@ RUN composer install \
 COPY . .
 
 RUN composer dump-autoload --optimize --no-dev \
-    && chown -R www-data:www-data storage bootstrap/cache \
+    && mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Render sets PORT; default 80 for local docker runs
-ENV PORT=80
-EXPOSE 80
+# Render injects PORT; local compose uses 8000
+ENV PORT=8000
+EXPOSE 8000
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["apache2-foreground"]
+CMD ["sh", "-c", "exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]

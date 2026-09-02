@@ -43,7 +43,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:80"
+      - "8000:8000"
     environment:
       APP_NAME: MeetMe
       APP_ENV: local
@@ -64,7 +64,7 @@ services:
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
       RUN_MIGRATIONS: "true"
-      PORT: "80"
+      PORT: "8000"
     volumes:
       # Live code reload — host edits apply without rebuild
       - ./backend:/var/www/html
