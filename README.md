@@ -37,30 +37,31 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 ## Architecture
 
 ```mermaid
-flowchart TB
-    subgraph client [Browser - Next.js]
-        UI[Meeting UI and Dashboard]
-        LK[LiveKit Client SDK]
+graph TB
+    subgraph client ["Browser Next.js"]
+        UI["Meeting UI and Dashboard"]
+        LK["LiveKit Client SDK"]
         UI --> LK
     end
 
-    subgraph backend [Laravel API]
-        API[REST API]
-        Auth[Sanctum Auth]
-        Token[LiveKit JWT Service]
+    subgraph backend ["Laravel API"]
+        API["REST API"]
+        Auth["Sanctum Auth"]
+        Token["LiveKit JWT Service"]
         API --> Auth
         API --> Token
     end
 
-    subgraph data [Data and Real-time]
+    subgraph data ["Data and Realtime"]
         DB[(MySQL)]
-        LKS[LiveKit Server]
+        LKS["LiveKit Server"]
     end
 
-    UI -->|HTTP API| API
+    UI -->|"HTTP API"| API
     API --> DB
-    Token -->|JWT| UI
-    LK <-->|WebRTC| LKS
+    Token -->|"JWT"| UI
+    LK -->|"WebRTC"| LKS
+    LKS -->|"WebRTC"| LK
 ```
 
 ### What the frontend handles
