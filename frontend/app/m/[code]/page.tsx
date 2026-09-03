@@ -267,9 +267,10 @@ export default function MeetingPage() {
     if (!joinData || joinData.participant.role !== "host") return;
     try {
       await api.endMeeting(code);
-    } finally {
-      handleLeave();
+    } catch {
+      // Still leave the UI even if API fails.
     }
+    await handleLeave();
   }
 
   if (loading || restoring) {

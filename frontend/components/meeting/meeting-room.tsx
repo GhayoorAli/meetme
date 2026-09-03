@@ -150,15 +150,16 @@ function MeetingChrome({
   }
 
   async function handleLeaveClick() {
+    // Navigate/leave first so LiveKit disconnect is treated as intentional.
+    onLeave();
     try {
       await api.leaveMeeting(meetingCode, {
         admit_token: admitToken,
         identity,
       });
     } catch {
-      // Still leave the UI even if API fails.
+      // Best-effort; UI already left.
     }
-    onLeave();
   }
 
   useEffect(() => {
@@ -359,18 +360,34 @@ export function MeetingRoom({
 }: MeetingRoomProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [connectKey, setConnectKey] = useState(0);
+  const intentionalLeaveRef = useRef(false);
 
   const permissionBlocked = connectionError
     ? isPermissionError(connectionError)
     : false;
 
+  const leaveIntentionally = useCallback(() => {
+    intentionalLeaveRef.current = true;
+    setConnectionError(null);
+    onLeave();
+  }, [onLeave]);
+
+  const endMeetingIntentionally = useCallback(() => {
+    intentionalLeaveRef.current = true;
+    setConnectionError(null);
+    onEndMeeting();
+  }, [onEndMeeting]);
+
   const handleError = useCallback((error: Error) => {
+    if (intentionalLeaveRef.current) return;
     setConnectionError(
       error.message || "Could not connect to the video server.",
     );
   }, []);
 
   const handleDisconnected = useCallback(() => {
+    // Leave / End for all disconnect LiveKit on purpose — go home, don't show error.
+    if (intentionalLeaveRef.current) return;
     setConnectionError((prev) =>
       prev ??
       "Disconnected from the meeting. The video connection closed unexpectedly.",
@@ -402,23 +419,23 @@ export function MeetingRoom({
               {permissionBlocked ? (
                 <ol className="mt-4 space-y-2 text-left text-xs text-[var(--meet-text-muted)]">
                   <li>1. Click the lock / camera icon in the address bar</li>
-                  <li>2. Allow Camera and Microphone for localhost</li>
+                  <li>2. Allow Camera and Microphone for this site</li>
                   <li>3. Click Try again</li>
                 </ol>
-              ) : (
+              ) : process.env.NODE_ENV === "development" ? (
                 <p className="mt-4 text-xs text-[var(--meet-text-muted)]">
                   If LiveKit is not running, start it with:{" "}
                   <code className="rounded bg-[var(--meet-bg)] px-1.5 py-0.5">
                     docker compose up -d
                   </code>
                 </p>
-              )}
+              ) : null}
               <div className="mt-6 flex justify-center gap-3">
                 <Button onClick={handleRetry}>
                   <RefreshCw className="h-4 w-4" />
                   Try again
                 </Button>
-                <Button variant="secondary" onClick={onLeave}>
+                <Button variant="secondary" onClick={leaveIntentionally}>
                   Back to dashboard
                 </Button>
               </div>
@@ -448,8 +465,8 @@ export function MeetingRoom({
             identity={identity}
             recordingPermission={recordingPermission}
             screenSharePermission={screenSharePermission}
-            onLeave={onLeave}
-            onEndMeeting={onEndMeeting}
+            onLeave={leaveIntentionally}
+            onEndMeeting={endMeetingIntentionally}
           />
           <RoomAudioRenderer />
         </LiveKitRoom>
