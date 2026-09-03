@@ -2,8 +2,15 @@ import type { ApiError } from "@/types";
 import { getAdmitToken } from "@/lib/admit-token";
 import { getHostToken, hostAuthBody } from "@/lib/host-token";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = resolveApiUrl();
 const API_TIMEOUT_MS = 15_000;
+
+/** Local: http://localhost:8000. Vercel: "same-origin" (proxy via next.config rewrites). */
+function resolveApiUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  if (raw === "same-origin" || raw === "/") return "";
+  return raw.replace(/\/$/, "");
+}
 
 async function fetchWithTimeout(
   url: string,
@@ -62,8 +69,11 @@ async function request<T>(
   if (csrf) {
     headers.set("X-XSRF-TOKEN", csrf);
   } else if (method !== "GET" && method !== "HEAD") {
+    const apiHint = API_URL || "(same origin)";
     throw new Error(
-      "CSRF cookie missing. Open the app at http://localhost:3000 (not 127.0.0.1) and ensure the backend runs on http://localhost:8000.",
+      `CSRF cookie missing. Cannot read XSRF-TOKEN for API ${apiHint}. ` +
+        `On Vercel set NEXT_PUBLIC_API_URL=same-origin and BACKEND_URL to your Railway URL. ` +
+        `Locally use http://localhost:3000 with NEXT_PUBLIC_API_URL=http://localhost:8000.`,
     );
   }
 
