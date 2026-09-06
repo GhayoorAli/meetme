@@ -25,7 +25,7 @@ import {
   RoomAudioRenderer,
   useRoomContext,
 } from "@livekit/components-react";
-import { RoomEvent, VideoQuality, type RemoteParticipant } from "livekit-client";
+import { RoomEvent, type RemoteParticipant } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Copy,
@@ -74,16 +74,7 @@ function RoomEventBridge({
   const room = useRoomContext();
 
   useEffect(() => {
-    const preferHd = (participant: RemoteParticipant) => {
-      participant.videoTrackPublications.forEach((publication) => {
-        if (publication.isSubscribed) {
-          publication.setVideoQuality(VideoQuality.HIGH);
-        }
-      });
-    };
-
     const onJoined = (participant: RemoteParticipant) => {
-      preferHd(participant);
       onToast(`${participant.name || participant.identity} joined the meeting`);
     };
     const onLeft = (participant: RemoteParticipant) => {
@@ -92,19 +83,13 @@ function RoomEventBridge({
         "warning",
       );
     };
-    const onTrackSubscribed = () => {
-      room.remoteParticipants.forEach((participant) => preferHd(participant));
-    };
 
-    room.remoteParticipants.forEach((participant) => preferHd(participant));
     room.on(RoomEvent.ParticipantConnected, onJoined);
     room.on(RoomEvent.ParticipantDisconnected, onLeft);
-    room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
 
     return () => {
       room.off(RoomEvent.ParticipantConnected, onJoined);
       room.off(RoomEvent.ParticipantDisconnected, onLeft);
-      room.off(RoomEvent.TrackSubscribed, onTrackSubscribed);
     };
   }, [room, onToast]);
 

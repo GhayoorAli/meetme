@@ -5,6 +5,10 @@ import { useCallback, useRef, useState } from "react";
 
 type RecordingState = "idle" | "recording" | "stopping";
 
+const RECORD_WIDTH = 960;
+const RECORD_HEIGHT = 540;
+const RECORD_FPS = 15;
+
 function collectMediaTracks(room: Room): {
   videoTracks: MediaStreamTrack[];
   audioTracks: MediaStreamTrack[];
@@ -38,9 +42,9 @@ function buildCompositeStream(
   audioTracks: MediaStreamTrack[],
 ): { stream: MediaStream; cleanup: () => void } {
   const canvas = document.createElement("canvas");
-  canvas.width = 1280;
-  canvas.height = 720;
-  const ctx = canvas.getContext("2d")!;
+  canvas.width = RECORD_WIDTH;
+  canvas.height = RECORD_HEIGHT;
+  const ctx = canvas.getContext("2d", { alpha: false })!;
 
   const videoElements = videoTracks.map((track) => {
     const el = document.createElement("video");
@@ -51,7 +55,9 @@ function buildCompositeStream(
     return el;
   });
 
-  let animationId = 0;
+  let timerId = 0;
+  const frameIntervalMs = 1000 / RECORD_FPS;
+
   const drawFrame = () => {
     ctx.fillStyle = "#202124";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -76,12 +82,12 @@ function buildCompositeStream(
       }
     });
 
-    animationId = requestAnimationFrame(drawFrame);
+    timerId = window.setTimeout(drawFrame, frameIntervalMs);
   };
 
   drawFrame();
 
-  const canvasStream = canvas.captureStream(30);
+  const canvasStream = canvas.captureStream(RECORD_FPS);
   const outputStream = new MediaStream(canvasStream.getVideoTracks());
 
   let audioContext: AudioContext | null = null;
@@ -100,7 +106,7 @@ function buildCompositeStream(
   }
 
   const cleanup = () => {
-    cancelAnimationFrame(animationId);
+    window.clearTimeout(timerId);
     videoElements.forEach((el) => {
       el.srcObject = null;
     });
@@ -109,6 +115,16 @@ function buildCompositeStream(
   };
 
   return { stream: outputStream, cleanup };
+}
+
+function pickRecorderMimeType(): string {
+  // VP8 is lighter on CPU than VP9 during an active call.
+  const candidates = [
+    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9,opus",
+    "video/webm",
+  ];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -137,11 +153,14 @@ export function useRoomRecording(room: Room | undefined, meetingCode: string) {
     const { stream, cleanup } = buildCompositeStream(videoTracks, audioTracks);
     cleanupRef.current = cleanup;
 
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-      ? "video/webm;codecs=vp9,opus"
-      : "video/webm";
+    const mimeType = pickRecorderMimeType();
+    const recorder = mimeType
+      ? new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: 1_200_000,
+        })
+      : new MediaRecorder(stream, { videoBitsPerSecond: 1_200_000 });
 
-    const recorder = new MediaRecorder(stream, { mimeType });
     chunksRef.current = [];
 
     recorder.ondataavailable = (event) => {
@@ -154,7 +173,9 @@ export function useRoomRecording(room: Room | undefined, meetingCode: string) {
       cleanupRef.current?.();
       cleanupRef.current = null;
 
-      const blob = new Blob(chunksRef.current, { type: mimeType });
+      const blob = new Blob(chunksRef.current, {
+        type: mimeType || "video/webm",
+      });
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       downloadBlob(blob, `meetme-${meetingCode}-${timestamp}.webm`);
       chunksRef.current = [];
