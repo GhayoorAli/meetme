@@ -3,19 +3,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo "==> Starting full Docker stack (MySQL, LiveKit, phpMyAdmin, Laravel, Next.js)..."
+echo "==> Starting Docker (PostgreSQL + LiveKit)..."
 cd "$ROOT"
-docker compose up -d --build
+docker compose up -d --remove-orphans
 
 echo "==> Service status:"
 docker compose ps
 
 echo ""
-echo "MeetMe is ready (Docker only — no host PHP/Node needed):"
-echo "  App       : http://localhost:3000"
-echo "  API       : http://localhost:8000"
-echo "  phpMyAdmin: http://localhost:8080"
-echo "  MySQL     : 127.0.0.1:3307  (meet_db / root / root)"
-echo "  LiveKit   : ws://localhost:7880"
+echo "MeetMe local stack:"
+echo "  PostgreSQL : 127.0.0.1:5432  (meet_db / meetme / meetme)"
+echo "  LiveKit    : ws://localhost:7880"
 echo ""
-echo "Logs: docker compose logs -f frontend backend"
+echo "  Web        : cd frontend && pnpm install && pnpm db:migrate && pnpm dev"
+echo "  App        : http://localhost:3000"
+echo "  Mobile     : cd mobile && npx expo start"
+echo ""
+echo "Set EXPO_PUBLIC_API_URL to http://<your-lan-ip>:3000 for a physical device."

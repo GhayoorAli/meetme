@@ -1,135 +1,29 @@
-import type { ApiError } from "@/types";
+import { request } from "@/lib/http";
 import { getAdmitToken } from "@/lib/admit-token";
 import { getHostToken, hostAuthBody } from "@/lib/host-token";
 
-const API_URL = resolveApiUrl();
-const API_TIMEOUT_MS = 15_000;
-
-/** Local: http://localhost:8000. Vercel: "same-origin" (proxy via next.config rewrites). */
-function resolveApiUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-  if (raw === "same-origin" || raw === "/") return "";
-  return raw.replace(/\/$/, "");
-}
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(
-        `Cannot reach the API at ${API_URL}. Start the backend with "php artisan serve" in the backend folder, and run "docker compose up -d mysql" for the database.`,
-      );
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-async function ensureCsrfCookie(): Promise<void> {
-  await fetchWithTimeout(`${API_URL}/sanctum/csrf-cookie`, {
-    credentials: "include",
-  });
-}
-
-function getCsrfToken(): string | null {
-  return getCookie("XSRF-TOKEN");
-}
-
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const method = (options.method ?? "GET").toUpperCase();
-  if (method !== "GET" && method !== "HEAD") {
-    await ensureCsrfCookie();
-  }
-
-  const headers = new Headers(options.headers);
-  headers.set("Accept", "application/json");
-  headers.set("X-Requested-With", "XMLHttpRequest");
-
-  if (options.body && !(options.body instanceof FormData)) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const csrf = getCsrfToken();
-  if (csrf) {
-    headers.set("X-XSRF-TOKEN", csrf);
-  } else if (method !== "GET" && method !== "HEAD") {
-    const apiHint = API_URL || "(same origin)";
-    throw new Error(
-      `CSRF cookie missing. Cannot read XSRF-TOKEN for API ${apiHint}. ` +
-        `On Vercel set NEXT_PUBLIC_API_URL=same-origin and BACKEND_URL to your Railway URL. ` +
-        `Locally use http://localhost:3000 with NEXT_PUBLIC_API_URL=http://localhost:8000.`,
-    );
-  }
-
-  const response = await fetchWithTimeout(`${API_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const error = data as ApiError;
-    const firstFieldError = error.errors
-      ? Object.values(error.errors)[0]?.[0]
-      : undefined;
-    throw new Error(firstFieldError ?? error.message ?? "Something went wrong.");
-  }
-
-  return data as T;
-}
-
 export const api = {
-  async initCsrf(): Promise<void> {
-    await ensureCsrfCookie();
-  },
-
   async getUser() {
     const response = await request<{ data: import("@/types").User }>("/api/user");
     return response.data;
   },
 
   async login(email: string, password: string) {
-    await ensureCsrfCookie();
-    await request<void>("/login", {
+    await request<{ data: import("@/types").User; token?: string }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    await ensureCsrfCookie();
   },
 
   async register(name: string, email: string, password: string, password_confirmation: string) {
-    await ensureCsrfCookie();
-    await request<void>("/register", {
+    await request<{ data: import("@/types").User; token?: string }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({ name, email, password, password_confirmation }),
     });
-    await ensureCsrfCookie();
   },
 
   async logout() {
-    return request<void>("/logout", { method: "POST" });
+    return request<void>("/api/auth/logout", { method: "POST" });
   },
 
   async getMeetings() {

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -15,7 +16,6 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Clock,
   Users,
 } from "lucide-react";
 
@@ -77,7 +77,10 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <div className="mb-10">
-        <h1 className="text-2xl font-semibold text-[var(--meet-text)]">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--meet-accent)]">
+          Your rooms
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--meet-text)]">
           Welcome back, {user?.name?.split(" ")[0]}
         </h1>
         <p className="mt-1 text-[var(--meet-text-muted)]">
@@ -90,7 +93,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 rounded-xl bg-[var(--meet-danger)]/10 px-4 py-3 text-sm text-[var(--meet-danger)]">
             {error}
             {!error.includes("Unauthenticated") ? null : (
-              <span> Make sure the Laravel API is running on port 8000.</span>
+              <span> Sign in again, then retry.</span>
             )}
           </div>
         ) : null}
@@ -118,14 +121,14 @@ export default function DashboardPage() {
           </p>
           <form onSubmit={handleJoin} className="mt-6 flex flex-col gap-2">
             <div className="flex gap-3">
-              <input
+              <Input
                 value={joinCode}
                 onChange={(e) => {
                   setJoinCode(e.target.value);
                   setJoinError("");
                 }}
                 placeholder="Paste link or code"
-                className="h-11 flex-1 rounded-lg border border-[var(--meet-border)] bg-[var(--meet-bg)] px-4 text-[var(--meet-text)] outline-none focus:border-[var(--meet-primary)]"
+                className="flex-1"
               />
               <Button type="submit" variant="secondary">
                 Join

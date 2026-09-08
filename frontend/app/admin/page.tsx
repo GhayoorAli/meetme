@@ -63,7 +63,10 @@ export default function AdminPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-semibold text-[var(--meet-text)]">
+      <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--meet-accent)]">
+        Platform
+      </p>
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--meet-text)]">
         Admin dashboard
       </h1>
       <p className="mt-1 text-[var(--meet-text-muted)]">
@@ -83,7 +86,7 @@ export default function AdminPage() {
             },
           ].map(({ label, value, icon: Icon }) => (
             <Card key={label} className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--meet-primary-strong)]/20 text-[var(--meet-primary)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--meet-primary-soft)] text-[var(--meet-primary)]">
                 <Icon className="h-5 w-5" />
               </div>
               <div>

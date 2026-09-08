@@ -23,7 +23,7 @@ type ParticipantsSidebarProps = {
 
 function AdminBadge() {
   return (
-    <span className="ml-1.5 rounded bg-[var(--meet-primary-strong)]/25 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--meet-primary)]">
+    <span className="ml-1.5 rounded bg-[var(--meet-primary)]/30 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c5ceff]">
       Admin
     </span>
   );
@@ -196,11 +196,11 @@ export function ParticipantsSidebar({
   if (!open) return null;
 
   return (
-    <aside className="flex h-full w-full max-w-sm flex-col border-l border-[var(--meet-border)] bg-[var(--meet-surface)]">
-      <div className="flex items-center justify-between border-b border-[var(--meet-border)] px-4 py-3">
+    <aside className="meet-people-panel">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
-          <h2 className="font-medium text-[var(--meet-text)]">People</h2>
-          <p className="text-xs text-[var(--meet-text-muted)]">
+          <h2 className="font-medium text-white">People</h2>
+          <p className="text-xs text-white/55">
             {liveParticipants.length} in call
             {isHost && waiting.length > 0
               ? ` · ${waiting.length} waiting`
@@ -214,7 +214,7 @@ export function ParticipantsSidebar({
             {raisedHands.size > 0 ? ` · ${raisedHands.size} raised` : ""}
           </p>
         </div>
-        <Button size="sm" variant="ghost" onClick={onClose}>
+        <Button size="sm" variant="ghost" className="text-white hover:bg-white/10" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -230,9 +230,9 @@ export function ParticipantsSidebar({
               {waiting.map((person) => (
                 <li
                   key={person.id}
-                  className="rounded-xl border border-[var(--meet-border)] bg-[var(--meet-bg)] p-3"
+                  className="rounded-xl border border-white/10 bg-white/5 p-3"
                 >
-                  <p className="font-medium text-[var(--meet-text)]">
+                  <p className="font-medium text-white">
                     {person.display_name}
                   </p>
                   <div className="mt-3 flex gap-2">
@@ -272,12 +272,12 @@ export function ParticipantsSidebar({
               {recordingRequests.map((person) => (
                 <li
                   key={person.id}
-                  className="rounded-xl border border-[var(--meet-border)] bg-[var(--meet-bg)] p-3"
+                  className="rounded-xl border border-white/10 bg-white/5 p-3"
                 >
-                  <p className="font-medium text-[var(--meet-text)]">
+                  <p className="font-medium text-white">
                     {person.display_name}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--meet-text-muted)]">
+                  <p className="mt-1 text-xs text-white/55">
                     Wants to record this meeting
                   </p>
                   <div className="mt-3 flex gap-2">
@@ -317,7 +317,7 @@ export function ParticipantsSidebar({
               {[...raisedHands.entries()].map(([identity, name]) => (
                 <li
                   key={identity}
-                  className="rounded-xl border border-[var(--meet-primary)]/30 bg-[var(--meet-bg)] px-3 py-2.5 text-sm text-[var(--meet-text)]"
+                  className="rounded-xl border border-[var(--meet-primary)]/30 bg-white/5 px-3 py-2.5 text-sm text-white"
                 >
                   ✋ {name}
                 </li>
@@ -336,12 +336,12 @@ export function ParticipantsSidebar({
               {screenShareRequests.map((person) => (
                 <li
                   key={person.id}
-                  className="rounded-xl border border-[var(--meet-border)] bg-[var(--meet-bg)] p-3"
+                  className="rounded-xl border border-white/10 bg-white/5 p-3"
                 >
-                  <p className="font-medium text-[var(--meet-text)]">
+                  <p className="font-medium text-white">
                     {person.display_name}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--meet-text-muted)]">
+                  <p className="mt-1 text-xs text-white/55">
                     Wants to share their screen
                   </p>
                   <div className="mt-3 flex gap-2">
@@ -372,7 +372,7 @@ export function ParticipantsSidebar({
         ) : null}
 
         <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--meet-text-muted)]">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/45">
             In this call
           </h3>
           <ul className="space-y-2">
@@ -382,10 +382,10 @@ export function ParticipantsSidebar({
               return (
                 <li
                   key={participant.identity}
-                  className="flex items-center justify-between rounded-xl border border-[var(--meet-border)] bg-[var(--meet-bg)] px-3 py-2.5"
+                  className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-[var(--meet-text)]">
+                    <p className="truncate font-medium text-white">
                       {handUp ? "✋ " : ""}
                       {participant.name || participant.identity}
                       {participant.isLocal ? " (You)" : ""}
@@ -393,14 +393,14 @@ export function ParticipantsSidebar({
                         <AdminBadge />
                       ) : null}
                     </p>
-                    <p className="text-xs text-[var(--meet-text-muted)]">
+                    <p className="text-xs text-white/55">
                       {participant.isLocal ? "You" : "In call"}
                     </p>
                   </div>
                   {micOn ? (
                     <Mic className="h-4 w-4 shrink-0 text-[var(--meet-success)]" />
                   ) : (
-                    <MicOff className="h-4 w-4 shrink-0 text-[var(--meet-text-muted)]" />
+                    <MicOff className="h-4 w-4 shrink-0 text-white/40" />
                   )}
                 </li>
               );

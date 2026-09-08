@@ -1,5 +1,6 @@
 "use client";
 
+import { MeetingDockButton } from "@/components/meeting/meeting-dock-button";
 import { Button } from "@/components/ui/button";
 import { useScreenShareHighlighter } from "@/components/meeting/screen-share-highlighter-sync";
 import type { HighlightStroke } from "@/lib/screen-share-highlighter-messages";
@@ -8,6 +9,7 @@ import {
   getVideoBoundsInContainer,
   getVideoSearchRoot,
   isNormalizedPoint,
+  boundsNearlyEqual,
   type VideoBounds,
 } from "@/lib/screen-share-video-bounds";
 import { Highlighter, Trash2, X } from "lucide-react";
@@ -42,18 +44,16 @@ export function ScreenShareHighlighterControls({
   if (!isScreenSharing) return null;
 
   return (
-    <Button
-      size="sm"
-      variant={highlightMode ? "primary" : "secondary"}
-      disabled={disabled}
-      onClick={() => setHighlightMode(!highlightMode)}
+    <MeetingDockButton
       title={
         sharerName ? `Highlight on ${sharerName}'s screen` : "Highlight screen"
       }
+      active={highlightMode}
+      disabled={disabled}
+      onClick={() => setHighlightMode(!highlightMode)}
     >
       <Highlighter className="h-4 w-4" />
-      Highlight
-    </Button>
+    </MeetingDockButton>
   );
 }
 
@@ -93,10 +93,11 @@ export function ScreenShareHighlighterOverlay({
     const video = findScreenShareVideo(searchRoot);
     if (!video) {
       videoBoundsRef.current = null;
-      setVideoBounds(null);
+      setVideoBounds((prev) => (prev ? null : prev));
       return;
     }
     const bounds = getVideoBoundsInContainer(video, container);
+    if (boundsNearlyEqual(videoBoundsRef.current, bounds)) return;
     videoBoundsRef.current = bounds;
     setVideoBounds(bounds);
   }, []);
@@ -156,6 +157,7 @@ export function ScreenShareHighlighterOverlay({
     const video = findScreenShareVideo(searchRoot);
     if (video) {
       observer.observe(video);
+      video.addEventListener("resize", updateVideoBounds);
     }
 
     const mutationObserver = new MutationObserver(() => {
@@ -164,15 +166,15 @@ export function ScreenShareHighlighterOverlay({
     mutationObserver.observe(searchRoot, {
       childList: true,
       subtree: true,
-      attributes: true,
     });
 
-    const interval = window.setInterval(updateVideoBounds, 500);
+    const interval = window.setInterval(updateVideoBounds, 2000);
 
     return () => {
       observer.disconnect();
       mutationObserver.disconnect();
       window.clearInterval(interval);
+      video?.removeEventListener("resize", updateVideoBounds);
     };
   }, [isScreenSharing, updateVideoBounds]);
 
@@ -216,6 +218,13 @@ export function ScreenShareHighlighterOverlay({
     if (!drawingRef.current || !currentStrokeRef.current) return;
     const point = pointerPos(e);
     if (!point) return;
+    const points = currentStrokeRef.current.points;
+    const last = points[points.length - 1];
+    if (last) {
+      const dx = point[0] - last[0];
+      const dy = point[1] - last[1];
+      if (dx * dx + dy * dy < 0.00004) return;
+    }
     currentStrokeRef.current.points.push(point);
     redraw();
   }
@@ -250,9 +259,9 @@ export function ScreenShareHighlighterOverlay({
       className={`absolute inset-0 z-10 ${interactive ? "" : "pointer-events-none"}`}
     >
       {interactive ? (
-        <div className="pointer-events-auto relative z-20 flex shrink-0 flex-col gap-2 border-b border-[var(--meet-primary)]/30 bg-[var(--meet-surface)]/90 px-3 py-2 backdrop-blur-sm">
+        <div className="pointer-events-auto relative z-20 flex shrink-0 flex-col gap-2 border-b border-white/10 bg-[#0c1220]/90 px-3 py-2 backdrop-blur-md">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-[var(--meet-text-muted)]">
+            <p className="text-xs text-white/60">
               Highlighting{" "}
               {sharerName ? `${sharerName}'s screen` : "shared screen"} — visible
               to everyone
@@ -268,6 +277,7 @@ export function ScreenShareHighlighterOverlay({
               <Button
                 size="sm"
                 variant="ghost"
+                className="text-white hover:bg-white/10"
                 onClick={() => setHighlightMode(false)}
               >
                 <X className="h-4 w-4" />
@@ -277,7 +287,7 @@ export function ScreenShareHighlighterOverlay({
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--meet-text-muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-white/50">
                 Color
               </span>
               {HIGHLIGHT_COLORS.map((c) => (
@@ -292,7 +302,7 @@ export function ScreenShareHighlighterOverlay({
               ))}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--meet-text-muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-white/50">
                 Size
               </span>
               <select

@@ -33,9 +33,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!user?.is_admin) return null;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col">
+      <div className="meet-atmosphere meet-atmosphere-page" aria-hidden />
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="relative z-10 flex-1">{children}</main>
     </div>
   );
 }

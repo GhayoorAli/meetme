@@ -9,11 +9,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variants = {
   primary:
-    "bg-[var(--meet-primary-strong)] text-white hover:bg-[#1765cc] shadow-sm",
+    "bg-[var(--meet-primary-strong)] text-white hover:bg-[var(--meet-primary)] shadow-[0_10px_24px_rgba(47,73,209,0.28)]",
   secondary:
-    "bg-[var(--meet-surface-elevated)] text-[var(--meet-text)] hover:bg-[#4a4d51] border border-[var(--meet-border)]",
+    "bg-[var(--meet-surface-elevated)] text-[var(--meet-text)] hover:bg-[var(--meet-primary-soft)] border border-[var(--meet-border)]",
   ghost:
-    "bg-transparent text-[var(--meet-text)] hover:bg-[var(--meet-surface)]",
+    "bg-transparent text-[var(--meet-text)] hover:bg-[var(--meet-primary-soft)]",
   danger: "bg-[var(--meet-danger)] text-white hover:opacity-90",
 };
 

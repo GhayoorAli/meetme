@@ -9,14 +9,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-[var(--meet-border)] bg-[var(--meet-surface)] p-6",
-        className,
-      )}
-    >
-      {children}
-    </div>
+    <div className={cn("meet-card rounded-2xl p-6", className)}>{children}</div>
   );
 }
 
@@ -28,12 +21,7 @@ export function CardTitle({
   className?: string;
 }) {
   return (
-    <h3
-      className={cn(
-        "text-lg font-medium text-[var(--meet-text)]",
-        className,
-      )}
-    >
+    <h3 className={cn("text-lg font-semibold text-[var(--meet-text)]", className)}>
       {children}
     </h3>
   );

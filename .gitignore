@@ -22,26 +22,6 @@ yarn-error.log*
 !.env.*.example
 !.env.local.example
 
-# Backend (Laravel)
-backend/vendor/
-backend/node_modules/
-backend/.phpunit.result.cache
-backend/.phpunit.cache/
-backend/auth.json
-backend/Homestead.json
-backend/Homestead.yaml
-backend/_ide_helper.php
-backend/.phpactor.json
-backend/public/hot
-backend/public/build/
-backend/public/storage
-backend/storage/*.key
-backend/storage/pail
-backend/storage/logs/*
-!backend/storage/logs/.gitignore
-backend/bootstrap/cache/*.php
-!backend/bootstrap/cache/.gitignore
-
 # Frontend (Next.js)
 frontend/node_modules/
 frontend/.next/
@@ -51,6 +31,13 @@ frontend/coverage/
 frontend/.vercel/
 frontend/*.tsbuildinfo
 frontend/next-env.d.ts
+
+# Mobile (Expo)
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/ios/
+mobile/android/
 
 # Optional local tooling
 *.pem

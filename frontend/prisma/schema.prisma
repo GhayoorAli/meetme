@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MeetingStatus {
+  active
+  ended
+}
+
+enum ParticipantRole {
+  host
+  guest
+}
+
+enum ParticipantStatus {
+  waiting
+  admitted
+  denied
+  left
+}
+
+enum PermissionStatus {
+  none
+  pending
+  approved
+  denied
+}
+
+model User {
+  id             Int                  @id @default(autoincrement())
+  name           String
+  email          String               @unique
+  passwordHash   String?              @map("password_hash")
+  googleId       String?              @unique @map("google_id")
+  isAdmin        Boolean              @default(false) @map("is_admin")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  hostedMeetings Meeting[]            @relation("MeetingHost")
+  participations MeetingParticipant[]
+
+  @@map("users")
+}
+
+model Meeting {
+  id                 Int                  @id @default(autoincrement())
+  hostId             Int?                 @map("host_id")
+  guestHostToken     String?              @unique @map("guest_host_token")
+  code               String               @unique
+  title              String
+  livekitRoom        String               @unique @map("livekit_room")
+  status             MeetingStatus        @default(active)
+  waitingRoomEnabled Boolean              @default(true) @map("waiting_room_enabled")
+  startedAt          DateTime?            @map("started_at")
+  endedAt            DateTime?            @map("ended_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  host               User?                @relation("MeetingHost", fields: [hostId], references: [id], onDelete: SetNull)
+  participants       MeetingParticipant[]
+
+  @@index([hostId, status])
+  @@map("meetings")
+}
+
+model MeetingParticipant {
+  id                    Int               @id @default(autoincrement())
+  meetingId             Int               @map("meeting_id")
+  userId                Int?              @map("user_id")
+  displayName           String            @map("display_name")
+  identity              String
+  role                  ParticipantRole   @default(guest)
+  status                ParticipantStatus @default(waiting)
+  recordingPermission   PermissionStatus  @default(none) @map("recording_permission")
+  screenSharePermission PermissionStatus  @default(none) @map("screen_share_permission")
+  handRaised            Boolean           @default(false) @map("hand_raised")
+  admitToken            String            @unique @map("admit_token")
+  joinedAt              DateTime?         @map("joined_at")
+  leftAt                DateTime?         @map("left_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  meeting               Meeting           @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user                  User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([meetingId, status])
+  @@map("meeting_participants")
+}

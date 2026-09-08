@@ -1,6 +1,6 @@
 # MeetMe
 
-A self-hosted video meeting platform — a lightweight Google Meet alternative with waiting rooms, guest hosting, collaborative tools, and host-controlled permissions. Built with **Next.js**, **Laravel**, and **LiveKit**.
+A self-hosted video meeting platform — a lightweight Google Meet alternative with waiting rooms, guest hosting, collaborative tools, and host-controlled permissions. Built with **Next.js**, **PostgreSQL**, **Prisma**, **LiveKit**, and **Expo**.
 
 ---
 
@@ -11,12 +11,13 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 | **Meetings** | Create instant meetings, share links, guest or registered host |
 | **Waiting room** | Host admits or denies participants before they enter |
 | **Video & audio** | HD calls via LiveKit WebRTC |
-| **Screen sharing** | Host-approved screen share with live highlighter overlay |
-| **Collaboration** | Shared whiteboard with admin-assigned editor |
+| **Screen sharing** | Host-approved screen share with live highlighter overlay (web) |
+| **Collaboration** | Shared whiteboard with admin-assigned editor (web) |
 | **Engagement** | Hand raise, participant sidebar, copy meeting link |
 | **Permissions** | Host controls recording and screen-share access |
 | **Accounts** | Register / login, dashboard, admin panel |
 | **Guests** | Join or host without an account |
+| **Mobile** | Expo app for auth, dashboard, waiting room, and LiveKit calls |
 
 ---
 
@@ -24,13 +25,14 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 
 | Layer | Technology | Role |
 |-------|------------|------|
-| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript | UI, meeting room, real-time sync over LiveKit data channels |
+| **Web** | [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript | UI, meeting room, **and REST API** (Route Handlers) |
 | **Styling** | Tailwind CSS 4 | Design system and responsive layout |
-| **Video SDK** | [LiveKit](https://livekit.io/) (`livekit-client`, `@livekit/components-react`) | WebRTC rooms, tracks, screen share, data messages |
-| **Backend** | [Laravel 13](https://laravel.com/) (PHP 8.3) | REST API, auth, meeting logic, token minting |
-| **Auth** | Laravel Sanctum + Laravel Breeze | Cookie-based SPA authentication |
-| **Database** | MySQL 8 | Users, meetings, participants, permissions |
-| **Infrastructure** | Docker Compose | MySQL, LiveKit server, phpMyAdmin (local dev) |
+| **Auth** | jose HS256 JWT (httpOnly cookie on web, Bearer on mobile) | Sessions |
+| **ORM** | [Prisma](https://www.prisma.io/) | PostgreSQL schema and queries |
+| **Database** | PostgreSQL 16 | Users, meetings, participants, permissions |
+| **Video SDK** | [LiveKit](https://livekit.io/) | WebRTC rooms, tracks, data messages |
+| **Mobile** | Expo (Router) + LiveKit React Native | Native camera/mic meetings |
+| **Infrastructure** | Docker Compose | PostgreSQL and LiveKit (local) |
 
 ---
 
@@ -38,64 +40,61 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 
 ```mermaid
 graph TB
-    subgraph client ["Browser Next.js"]
-        UI["Meeting UI and Dashboard"]
-        LK["LiveKit Client SDK"]
-        UI --> LK
+    subgraph clients ["Clients"]
+        Web["Next.js web app"]
+        Mobile["Expo app"]
+        LKWeb["LiveKit JS"]
+        LKMobile["LiveKit React Native"]
+        Web --> LKWeb
+        Mobile --> LKMobile
     end
 
-    subgraph backend ["Laravel API"]
-        API["REST API"]
-        Auth["Sanctum Auth"]
-        Token["LiveKit JWT Service"]
-        API --> Auth
+    subgraph next ["Next.js"]
+        UI["Pages"]
+        API["Route Handlers /api"]
+        Token["LiveKit JWT"]
+        UI --> API
         API --> Token
     end
 
-    subgraph data ["Data and Realtime"]
-        DB[(MySQL)]
+    subgraph data ["Data and realtime"]
+        DB[(PostgreSQL)]
         LKS["LiveKit Server"]
     end
 
-    UI -->|"HTTP API"| API
+    Web -->|"same-origin HTTP"| API
+    Mobile -->|"HTTP + Bearer"| API
     API --> DB
-    Token -->|"JWT"| UI
-    LK -->|"WebRTC"| LKS
-    LKS -->|"WebRTC"| LK
+    Token -->|"JWT"| Web
+    Token -->|"JWT"| Mobile
+    LKWeb -->|"WebRTC"| LKS
+    LKMobile -->|"WebRTC"| LKS
 ```
 
-### What the frontend handles
+### What Next.js handles
 
 - Landing page, auth screens, user dashboard, admin panel
+- REST API: auth, meetings, waiting room, permissions, admin
 - Meeting join flow (waiting room UI, session restore after refresh)
 - LiveKit room UI: camera, mic, layout, participants
-- **Real-time features** synced via LiveKit **data channels** (not Laravel polling):
+- **Real-time features** synced via LiveKit **data channels** (not API polling):
   - Hand raise
   - Whiteboard strokes and editor assignment
   - Screen-share state
   - Screen-share highlighter (normalized coordinates)
   - Recording permission sync
-- Session tokens stored in `sessionStorage` (guest host token, admit token)
+- Session: httpOnly `meetme_session` cookie on web; JWT in SecureStore on mobile
 
-### What the backend handles
+### What the API handles
 
-- User registration, login, password reset, admin roles
+- User registration, login, admin roles
 - Meeting CRUD, unique meeting codes, guest-host tokens
 - Waiting room: join requests, admit / deny, participant status
-- LiveKit access token generation (JWT signed with API secret)
+- LiveKit access token generation
 - Permission workflows: recording and screen-share request / approve / deny
 - Admin API: platform stats, user management, meeting cleanup
-- CORS and Sanctum stateful API for the Next.js frontend
 
-### Division of responsibility
-
-| Concern | Frontend | Backend | LiveKit |
-|---------|----------|---------|---------|
-| Authentication | Login forms, cookies | Sanctum sessions | — |
-| Join / waiting room | UI + polling | DB status, admit API | — |
-| Video / audio | Renders tracks | Mints room token | WebRTC media |
-| Whiteboard / highlighter | Canvas + sync | — | Data messages |
-| Recording permission | UI state | Persists approval | — |
+Whiteboard, in-browser recording UI, and the share highlighter stay **web-first**.
 
 ---
 
@@ -105,7 +104,7 @@ graph TB
 sequenceDiagram
     participant Host
     participant Guest
-    participant API as Laravel API
+    participant API as Next.js API
     participant LK as LiveKit
 
     Host->>API: Create meeting
@@ -120,16 +119,14 @@ sequenceDiagram
     Guest->>API: Poll join status
     API-->>Guest: Admitted with LiveKit JWT
     Guest->>LK: Connect to room
-
-    Note over Guest,API: Refresh restores session via sessionStorage
 ```
 
 1. **Host** creates a meeting (registered user or guest with name).
-2. **Participants** open `/m/{code}` and request to join.
-3. If the waiting room is enabled, the **host admits** them from the People sidebar.
-4. **Backend** issues a LiveKit JWT; the **frontend** connects to the WebRTC room.
+2. **Participants** open `/m/{code}` (or the Expo join screen) and request to join.
+3. If the waiting room is enabled, the **host admits** them from People.
+4. The **API** issues a LiveKit JWT; the **client** connects to the WebRTC room.
 5. In-call features (whiteboard, highlighter, hand raise) sync over LiveKit data topics.
-6. **Host** can end the meeting for everyone or participants can leave.
+6. **Host** can end the meeting for everyone, or participants can leave.
 
 ---
 
@@ -137,19 +134,14 @@ sequenceDiagram
 
 ```
 meetme/
-├── frontend/          # Next.js app (port 3000)
-│   ├── app/           # Routes: /, /login, /dashboard, /m/[code], /admin
+├── frontend/          # Next.js web app + API (port 3000)
+│   ├── app/           # Pages and Route Handlers under app/api
 │   ├── components/    # UI + meeting-room feature modules
-│   └── lib/           # API client, LiveKit helpers, sync message types
-├── backend/           # Laravel API (port 8000)
-│   ├── app/
-│   │   ├── Http/Controllers/Api/
-│   │   ├── Models/
-│   │   └── Services/  # LiveKitTokenService, MeetingCodeGenerator
-│   ├── database/migrations/
-│   └── routes/api.php
-├── scripts/           # dev.sh, start-backend.sh
-├── docker-compose.yml # MySQL, LiveKit, phpMyAdmin
+│   ├── lib/server/    # Auth, meetings, LiveKit, Prisma
+│   └── prisma/        # Schema and migrations
+├── mobile/            # Expo app (same JSON API)
+├── scripts/           # dev.sh, dev-local.ps1
+├── docker-compose.yml # PostgreSQL + LiveKit
 └── livekit.yaml       # LiveKit server config (reference)
 ```
 
@@ -157,10 +149,10 @@ meetme/
 
 ## Prerequisites
 
-- **Node.js** 20+ and **pnpm**
-- **PHP** 8.3+, **Composer**
-- **Docker** & Docker Compose (MySQL + LiveKit)
+- **Node.js** 20+ and **pnpm** (web)
+- **Docker** & Docker Compose (PostgreSQL, LiveKit)
 - **Git**
+- **Expo** toolchain for the mobile app (EAS or a local Android/iOS build — LiveKit does not run in Expo Go)
 
 ---
 
@@ -169,86 +161,80 @@ meetme/
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/your-username/meetme.git
+git clone https://github.com/GhayoorAli/meetme.git
 cd meetme
-```
-
-**Backend** — copy env and generate key:
-
-```bash
-cp backend/.env.example backend/.env
-cd backend
-composer install
-php artisan key:generate
-```
-
-Set in `backend/.env`:
-
-```env
-APP_URL=http://localhost:8000
-FRONTEND_URL=http://localhost:3000
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3307
-DB_DATABASE=meet_db
-DB_USERNAME=root
-DB_PASSWORD=root
-LIVEKIT_URL=ws://localhost:7880
-LIVEKIT_API_KEY=devkey
-LIVEKIT_API_SECRET=secret
-SESSION_DRIVER=file
-```
-
-**Frontend**:
-
-```bash
 cp frontend/.env.local.example frontend/.env.local
 ```
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=
+
+DATABASE_URL=postgresql://meetme:meetme@127.0.0.1:5432/meet_db
+AUTH_SECRET=change-me-in-production-use-a-long-random-string
+APP_URL=http://localhost:3000
+
+LIVEKIT_URL=ws://localhost:7880
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=secret
 ```
 
-### 2. Start infrastructure
+Leave `NEXT_PUBLIC_API_URL` empty so the browser calls `/api` on the same origin.
+
+### 2. Start PostgreSQL + LiveKit
 
 ```bash
-docker compose up -d
+docker compose up -d --remove-orphans
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\dev-local.ps1
 ```
 
 | Service | URL / Port |
 |---------|------------|
-| MySQL | `127.0.0.1:3307` |
+| Next.js (web + API) | http://localhost:3000 |
+| PostgreSQL | `127.0.0.1:5432` (`meetme` / `meetme` / `meet_db`) |
 | LiveKit | `ws://localhost:7880` |
-| phpMyAdmin | http://localhost:8080 |
 
-### 3. Migrate and run backend
-
-```bash
-cd backend
-php artisan migrate
-php artisan serve --host=localhost --port=8000
-```
-
-Or from the repo root:
-
-```bash
-./scripts/start-backend.sh
-```
-
-### 4. Run frontend
+### 3. Migrate and run the web app
 
 ```bash
 cd frontend
 pnpm install
+pnpm db:migrate
 pnpm dev
 ```
 
-Open **http://localhost:3000** (use `localhost`, not `127.0.0.1`, for cookie/CSRF consistency).
+Open **http://localhost:3000**. The first registered user becomes an admin.
 
-### Quick start script
+### 4. Mobile (Expo)
 
 ```bash
-./scripts/dev.sh   # starts Docker and prints service URLs
+cd mobile
+npm install
+cp .env.example .env
+```
+
+Set `EXPO_PUBLIC_API_URL` to your PC’s LAN address, not `localhost` (that is the phone itself):
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
+```
+
+For a physical device, also point LiveKit at the same LAN IP:
+
+- `LIVEKIT_URL=ws://192.168.1.10:7880` in `frontend/.env.local`
+- `LIVEKIT_NODE_IP=192.168.1.10` when starting Compose
+- Restart Next.js after changing `LIVEKIT_URL`
+
+LiveKit needs a **development build** (not Expo Go):
+
+```bash
+npx expo prebuild
+npx expo run:android
+# or: npx expo run:ios
 ```
 
 ---
@@ -257,22 +243,42 @@ Open **http://localhost:3000** (use `localhost`, not `127.0.0.1`, for cookie/CSR
 
 | Variable | Where | Description |
 |----------|-------|-------------|
-| `NEXT_PUBLIC_API_URL` | Frontend | Laravel API base URL |
-| `APP_URL` | Backend | Public API URL |
-| `FRONTEND_URL` | Backend | Allowed CORS / Sanctum origin |
-| `DB_*` | Backend | MySQL connection |
-| `LIVEKIT_URL` | Backend | LiveKit WebSocket URL (`ws://` or `wss://`) |
-| `LIVEKIT_API_KEY` | Backend | LiveKit API key |
-| `LIVEKIT_API_SECRET` | Backend | Secret for signing JWTs |
-| `APP_KEY` | Backend | Laravel encryption key |
+| `NEXT_PUBLIC_API_URL` | Web | Leave empty for same-origin `/api` |
+| `DATABASE_URL` | Web | PostgreSQL connection string |
+| `AUTH_SECRET` | Web | JWT signing secret (16+ characters) |
+| `APP_URL` | Web | Public site URL (join links) |
+| `LIVEKIT_URL` | Web | WebSocket URL returned to clients |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Web | LiveKit credentials |
+| `LIVEKIT_NODE_IP` | Compose | Advertised IP for mobile/LAN WebRTC |
+| `EXPO_PUBLIC_API_URL` | Mobile | Next.js origin, e.g. `http://192.168.1.10:3000` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Web | Google OAuth web client (see below) |
+| `GOOGLE_IOS_CLIENT_ID` / `GOOGLE_ANDROID_CLIENT_ID` | Web | Optional native client IDs for Expo ID tokens |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Mobile | Same value as `GOOGLE_CLIENT_ID` |
+
+### Google sign-in
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials) create an **OAuth 2.0 Client ID** of type **Web application**.
+2. Authorized JavaScript origin: `http://localhost:3000`
+3. Authorized redirect URI: `http://localhost:3000/api/auth/google/callback`
+4. Put the client ID and secret in `frontend/.env.local`, then restart Next.js.
+
+Email/password still works. A Google login with the same Gmail as an existing account is linked to that user.
+
+For Expo, also create iOS/Android OAuth clients if you sign in on a device, and set `EXPO_PUBLIC_GOOGLE_*` in `mobile/.env`.
 
 ---
 
 ## API overview
 
+Auth login/register return `{ data: User, token }`. Web stores the JWT in an httpOnly cookie; mobile sends `Authorization: Bearer <token>`.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/register`, `/api/login` | Authentication |
+| `POST` | `/api/auth/register`, `/api/auth/login` | Authentication |
+| `GET` | `/api/auth/google` | Start Google OAuth (web) |
+| `POST` | `/api/auth/google` | Exchange Google ID token (mobile) |
+| `POST` | `/api/auth/logout` | Clear session cookie |
+| `GET` | `/api/user` | Current user |
 | `POST` | `/api/meetings` | Create meeting (auth) |
 | `POST` | `/api/meetings/guest` | Create guest-hosted meeting |
 | `GET` | `/api/meetings/{code}` | Meeting metadata |
@@ -282,22 +288,18 @@ Open **http://localhost:3000** (use `localhost`, not `127.0.0.1`, for cookie/CSR
 | `POST` | `/api/meetings/{code}/end` | End meeting for all |
 | `GET` | `/api/admin/*` | Admin dashboard (auth + admin) |
 
-Full routes: [`backend/routes/api.php`](backend/routes/api.php)
-
 ---
 
 ## Deployment notes
 
-MeetMe is a **multi-service** app. A typical production setup:
+| Component | Local | Live |
+|-----------|--------|------|
+| Web + API (`frontend/`) | `pnpm dev` | [Vercel](https://vercel.com) or `frontend/Dockerfile` |
+| PostgreSQL | Docker Compose (`5432`) | Managed Postgres |
+| LiveKit | Docker Compose (`7880`) | [LiveKit Cloud](https://livekit.io/cloud) |
+| Mobile (`mobile/`) | Expo dev client | EAS Build |
 
-| Component | Suggested hosting |
-|-----------|-------------------|
-| Frontend (`frontend/`) | [Vercel](https://vercel.com), Netlify, or any Node host |
-| Backend (`backend/`) | Railway, Render, Fly.io, or a VPS |
-| MySQL | Managed MySQL (PlanetScale, Railway, DigitalOcean) |
-| LiveKit | [LiveKit Cloud](https://livekit.io/cloud) or self-hosted VPS |
-
-Use HTTPS everywhere and set `LIVEKIT_URL` to `wss://` in production.
+Use HTTPS and `wss://` LiveKit URLs in production. Set a strong `AUTH_SECRET`.
 
 ---
 
@@ -305,10 +307,11 @@ Use HTTPS everywhere and set `LIVEKIT_URL` to `wss://` in production.
 
 | Issue | Fix |
 |-------|-----|
-| Login / join stuck loading | Ensure backend on port **8000**, MySQL running, use `localhost` not `127.0.0.1` |
-| Port 8000 in use | Run `./scripts/start-backend.sh` or `fuser -k 8000/tcp` |
-| No video / room fails | Confirm LiveKit is up: `docker compose ps` |
-| CSRF / cookie errors | Match `FRONTEND_URL` and browser URL (both `localhost`) |
+| Login / join fails | PostgreSQL on **5432**, `pnpm db:migrate`, Next on **3000** |
+| Prisma cannot connect | `DATABASE_URL=postgresql://meetme:meetme@127.0.0.1:5432/meet_db` (not `localhost` if IPv6 hangs) |
+| No video | `docker compose ps` — LiveKit on 7880 |
+| Phone cannot reach API | Use LAN IP in `EXPO_PUBLIC_API_URL`; allow port 3000 on the firewall |
+| Phone has no media | Set `LIVEKIT_URL` and `LIVEKIT_NODE_IP` to the LAN IP, rebuild LiveKit |
 
 ---
 
