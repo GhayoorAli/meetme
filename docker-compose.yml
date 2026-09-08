@@ -1,103 +1,30 @@
+# Local: PostgreSQL + LiveKit. Next.js and Expo run on the host.
 services:
-  mysql:
-    image: mysql:8.4
+  postgres:
+    image: postgres:16
     ports:
-      - "3307:3306"
+      - "5432:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: meet_db
+      POSTGRES_USER: meetme
+      POSTGRES_PASSWORD: meetme
+      POSTGRES_DB: meet_db
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U meetme -d meet_db"]
       interval: 5s
       timeout: 5s
       retries: 15
 
   livekit:
     image: livekit/livekit-server:latest
-    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    command: --dev --bind 0.0.0.0 --node-ip ${LIVEKIT_NODE_IP:-127.0.0.1}
     ports:
       - "7880:7880"
       - "7881:7881"
       - "7882:7882/udp"
     restart: unless-stopped
 
-  phpmyadmin:
-    image: phpmyadmin:latest
-    ports:
-      - "8080:80"
-    environment:
-      PMA_HOST: mysql
-      PMA_USER: root
-      PMA_PASSWORD: root
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Laravel API — PHP 8.3 in Docker (no host PHP required)
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      APP_NAME: MeetMe
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
-      FRONTEND_URL: http://localhost:3000
-      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: "3306"
-      DB_DATABASE: meet_db
-      DB_USERNAME: root
-      DB_PASSWORD: root
-      LIVEKIT_URL: ws://localhost:7880
-      LIVEKIT_API_KEY: devkey
-      LIVEKIT_API_SECRET: secret
-      SESSION_DRIVER: file
-      CACHE_STORE: file
-      QUEUE_CONNECTION: sync
-      LOG_CHANNEL: stderr
-      RUN_MIGRATIONS: "true"
-      PORT: "8000"
-    volumes:
-      # Live code reload — host edits apply without rebuild
-      - ./backend:/var/www/html
-      # Keep vendor inside Docker (avoids host PHP / Composer)
-      - backend_vendor:/var/www/html/vendor
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Next.js UI — Node 20 + pnpm in Docker (no host Node required)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
-      NEXT_TELEMETRY_DISABLED: "1"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-      - frontend_next:/app/.next
-    depends_on:
-      - backend
-    restart: unless-stopped
-
 volumes:
-  mysql_data:
-  backend_vendor:
-  frontend_node_modules:
-  frontend_next:
+  postgres_data:

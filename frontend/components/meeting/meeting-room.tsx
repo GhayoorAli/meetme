@@ -1,13 +1,15 @@
 "use client";
 
+import "@livekit/components-styles";
+import "./meeting-room.css";
 import { Button } from "@/components/ui/button";
-import { BackgroundControls } from "@/components/meeting/background-controls";
 import { ParticipantsSidebar } from "@/components/meeting/participants-sidebar";
 import { RecordingControls } from "@/components/meeting/recording-controls";
 import { RecordingSyncProvider } from "@/components/meeting/recording-sync";
 import { ScreenShareSyncProvider } from "@/components/meeting/screen-share-sync";
 import { HandRaiseProvider } from "@/components/meeting/hand-raise-sync";
 import { HandRaiseControls } from "@/components/meeting/hand-raise-controls";
+import { MeetingMediaControls } from "@/components/meeting/meeting-media-controls";
 import { ScreenShareControls } from "@/components/meeting/screen-share-controls";
 import {
   ScreenShareHighlighterControls,
@@ -21,11 +23,12 @@ import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/lib/api";
 import {
   LiveKitRoom,
-  VideoConference,
   RoomAudioRenderer,
   useRoomContext,
 } from "@livekit/components-react";
-import { RoomEvent, VideoQuality, type RemoteParticipant } from "livekit-client";
+import { MeetingDockButton } from "@/components/meeting/meeting-dock-button";
+import { MeetingVideoStage } from "@/components/meeting/meeting-video-stage";
+import { RoomEvent, type RemoteParticipant } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Copy,
@@ -74,16 +77,7 @@ function RoomEventBridge({
   const room = useRoomContext();
 
   useEffect(() => {
-    const preferHd = (participant: RemoteParticipant) => {
-      participant.videoTrackPublications.forEach((publication) => {
-        if (publication.isSubscribed) {
-          publication.setVideoQuality(VideoQuality.HIGH);
-        }
-      });
-    };
-
     const onJoined = (participant: RemoteParticipant) => {
-      preferHd(participant);
       onToast(`${participant.name || participant.identity} joined the meeting`);
     };
     const onLeft = (participant: RemoteParticipant) => {
@@ -92,23 +86,39 @@ function RoomEventBridge({
         "warning",
       );
     };
-    const onTrackSubscribed = () => {
-      room.remoteParticipants.forEach((participant) => preferHd(participant));
-    };
 
-    room.remoteParticipants.forEach((participant) => preferHd(participant));
     room.on(RoomEvent.ParticipantConnected, onJoined);
     room.on(RoomEvent.ParticipantDisconnected, onLeft);
-    room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
 
     return () => {
       room.off(RoomEvent.ParticipantConnected, onJoined);
       room.off(RoomEvent.ParticipantDisconnected, onLeft);
-      room.off(RoomEvent.TrackSubscribed, onTrackSubscribed);
     };
   }, [room, onToast]);
 
   return null;
+}
+
+function MeetingTimer() {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      setElapsed(Math.floor((Date.now() - started) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const hours = Math.floor(elapsed / 3600);
+  const minutes = Math.floor((elapsed % 3600) / 60);
+  const seconds = elapsed % 60;
+  const stamp =
+    hours > 0
+      ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+      : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  return <span className="meet-topbar-timer">{stamp}</span>;
 }
 
 function MeetingChrome({
@@ -226,89 +236,9 @@ function MeetingChrome({
           onToast={pushToast}
         >
         <ScreenShareHighlighterProvider localIdentity={localIdentity}>
-      <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--meet-border)] px-4">
-        <div className="min-w-0">
-          <p className="truncate font-medium text-[var(--meet-text)]">
-            {meetingTitle}
-          </p>
-          <p className="text-xs text-[var(--meet-text-muted)] font-mono">
-            {meetingCode}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <HandRaiseControls />
-          <ScreenShareControls
-            meetingCode={meetingCode}
-            isHost={isHost}
-            admitToken={admitToken}
-            identity={identity}
-            onToast={pushToast}
-          />
-          <ScreenShareHighlighterControls disabled={whiteboardOpen} />
-          <Button
-            size="sm"
-            variant={whiteboardOpen ? "primary" : "secondary"}
-            onClick={() => setWhiteboardOpen((v) => !v)}
-          >
-            <PenLine className="h-4 w-4" />
-            Whiteboard
-          </Button>
-          <RecordingControls
-            meetingCode={meetingCode}
-            isHost={isHost}
-            admitToken={admitToken}
-            identity={identity}
-            onToast={pushToast}
-          />
-          <BackgroundControls />
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setSidebarOpen((v) => !v)}
-          >
-            <Users className="h-4 w-4" />
-            People
-            {isHost && waitingCount > 0 ? (
-              <span className="ml-1 rounded-full bg-[var(--meet-danger)] px-1.5 text-[10px] text-white">
-                {waitingCount}
-              </span>
-            ) : null}
-            {isHost && recordingRequestCount > 0 ? (
-              <span className="ml-1 rounded-full bg-[var(--meet-danger)]/80 px-1.5 text-[10px] text-white">
-                {recordingRequestCount}
-              </span>
-            ) : null}
-            {isHost && screenShareRequestCount > 0 ? (
-              <span className="ml-1 rounded-full bg-[var(--meet-primary-strong)] px-1.5 text-[10px] text-white">
-                {screenShareRequestCount}
-              </span>
-            ) : null}
-          </Button>
-          <Button size="sm" variant="secondary" onClick={handleCopyLink}>
-            {copied ? (
-              <Check className="h-4 w-4 text-[var(--meet-success)]" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            Copy link
-          </Button>
-          {isHost ? (
-            <Button size="sm" variant="danger" onClick={onEndMeeting}>
-              <XCircle className="h-4 w-4" />
-              End for all
-            </Button>
-          ) : null}
-          <Button size="sm" variant="ghost" onClick={handleLeaveClick}>
-            <PhoneOff className="h-4 w-4" />
-            Leave
-          </Button>
-        </div>
-      </header>
-
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="relative min-w-0 flex-1">
-          <VideoConference />
+      <div className="meet-room-shell">
+        <div className="meet-room-stage">
+          <MeetingVideoStage />
           <ScreenShareHighlighterOverlay
             localIdentity={localIdentity}
             authorName={localName}
@@ -322,6 +252,86 @@ function MeetingChrome({
           />
           <MeetingToasts toasts={toasts} onDismiss={dismissToast} />
         </div>
+
+        <header className="meet-topbar">
+          <div className="meet-topbar-title">
+            <p>{meetingTitle}</p>
+            <div className="meet-topbar-meta">
+              <span className="meet-live-dot" />
+              <span className="font-mono tracking-wide">{meetingCode}</span>
+            </div>
+          </div>
+          <MeetingTimer />
+          <div className="flex items-center gap-2">
+            {isHost ? <span className="meet-host-chip">Host</span> : null}
+            <button type="button" className="meet-ghost-btn" onClick={handleCopyLink}>
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-[var(--meet-success)]" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Invite"}</span>
+            </button>
+          </div>
+        </header>
+
+        <div className="meet-dock">
+          <div className="meet-dock-inner">
+            <MeetingMediaControls />
+            <ScreenShareControls
+              meetingCode={meetingCode}
+              isHost={isHost}
+              admitToken={admitToken}
+              identity={identity}
+              onToast={pushToast}
+            />
+            <HandRaiseControls />
+            <ScreenShareHighlighterControls disabled={whiteboardOpen} />
+            <MeetingDockButton
+              title={whiteboardOpen ? "Close whiteboard" : "Whiteboard"}
+              active={whiteboardOpen}
+              onClick={() => setWhiteboardOpen((v) => !v)}
+            >
+              <PenLine className="h-4 w-4" />
+            </MeetingDockButton>
+            <RecordingControls
+              meetingCode={meetingCode}
+              isHost={isHost}
+              admitToken={admitToken}
+              identity={identity}
+              onToast={pushToast}
+            />
+            <MeetingDockButton
+              title="People"
+              active={sidebarOpen}
+              onClick={() => setSidebarOpen((v) => !v)}
+              badge={
+                isHost &&
+                waitingCount + recordingRequestCount + screenShareRequestCount > 0
+                  ? waitingCount + recordingRequestCount + screenShareRequestCount
+                  : undefined
+              }
+            >
+              <Users className="h-4 w-4" />
+            </MeetingDockButton>
+            {isHost ? (
+              <button type="button" className="meet-end-btn" onClick={onEndMeeting}>
+                <XCircle className="h-4 w-4" />
+                End for all
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="meet-leave-btn"
+              title="Leave"
+              onClick={handleLeaveClick}
+            >
+              <PhoneOff className="h-4 w-4" />
+              <span className="meet-leave-label">Leave</span>
+            </button>
+          </div>
+        </div>
+
         <ParticipantsSidebar
           meetingCode={meetingCode}
           isHost={isHost}
@@ -332,9 +342,8 @@ function MeetingChrome({
           onRecordingRequestCountChange={setRecordingRequestCount}
           onScreenShareRequestCountChange={setScreenShareRequestCount}
         />
-      </div>
 
-      <RoomEventBridge onToast={pushToast} />
+        <RoomEventBridge onToast={pushToast} />
       </div>
         </ScreenShareHighlighterProvider>
         </WhiteboardSyncProvider>
@@ -400,32 +409,32 @@ export function MeetingRoom({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--meet-bg)]">
-      <div className="relative flex-1 overflow-hidden">
+    <div className="meet-room">
+      <div className="relative flex-1 overflow-hidden" style={{ height: "100%" }}>
         {connectionError ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--meet-bg)]/95 p-6">
-            <div className="max-w-md rounded-2xl border border-[var(--meet-border)] bg-[var(--meet-surface)] p-8 text-center">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 p-6">
+            <div className="meet-error-card">
               <AlertCircle className="mx-auto h-10 w-10 text-[var(--meet-danger)]" />
-              <h2 className="mt-4 text-lg font-medium text-[var(--meet-text)]">
+              <h2 className="mt-4 text-lg font-medium text-white">
                 {permissionBlocked
                   ? "Camera or microphone blocked"
                   : "Connection failed"}
               </h2>
-              <p className="mt-2 text-sm text-[var(--meet-text-muted)]">
+              <p className="mt-2 text-sm text-white/60">
                 {permissionBlocked
                   ? "Chrome needs permission to use your camera and microphone for the call."
                   : connectionError}
               </p>
               {permissionBlocked ? (
-                <ol className="mt-4 space-y-2 text-left text-xs text-[var(--meet-text-muted)]">
+                <ol className="mt-4 space-y-2 text-left text-xs text-white/55">
                   <li>1. Click the lock / camera icon in the address bar</li>
                   <li>2. Allow Camera and Microphone for this site</li>
                   <li>3. Click Try again</li>
                 </ol>
               ) : process.env.NODE_ENV === "development" ? (
-                <p className="mt-4 text-xs text-[var(--meet-text-muted)]">
+                <p className="mt-4 text-xs text-white/55">
                   If LiveKit is not running, start it with:{" "}
-                  <code className="rounded bg-[var(--meet-bg)] px-1.5 py-0.5">
+                  <code className="rounded bg-white/10 px-1.5 py-0.5">
                     docker compose up -d
                   </code>
                 </p>

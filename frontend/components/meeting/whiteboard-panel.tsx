@@ -217,12 +217,12 @@ export function WhiteboardPanel({
   const readOnly = !canEdit;
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-[var(--meet-bg)]">
-      <header className="flex shrink-0 flex-col gap-2 border-b border-[var(--meet-border)] px-4 py-3">
+    <div className="absolute inset-0 z-20 flex flex-col bg-[#070b16]">
+      <header className="flex shrink-0 flex-col gap-2 border-b border-white/10 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="font-medium text-[var(--meet-text)]">Whiteboard</h2>
-            <p className="text-xs text-[var(--meet-text-muted)]">
+            <h2 className="font-medium text-white">Whiteboard</h2>
+            <p className="text-xs text-white/55">
               {isHost
                 ? assignedEditor
                   ? `You are editing (Admin) · ${assignedEditor.name} can also edit`
@@ -354,7 +354,7 @@ export function WhiteboardPanel({
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-[var(--meet-text-muted)]">
+          <p className="text-sm text-white/55">
             Ask the admin to assign you the whiteboard if you need to draw.
           </p>
         )}

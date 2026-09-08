@@ -1,213 +1,105 @@
-"use client";
-
 import { Header } from "@/components/layout/header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api";
-import { saveHostToken, saveGuestHostName } from "@/lib/host-token";
-import { useAuth } from "@/lib/auth-context";
-import { formatMeetingCode } from "@/lib/utils";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import {
-  Video,
-  Users,
-  Shield,
-  Zap,
-  UserRound,
-} from "lucide-react";
+import { HeroBackdrop } from "@/components/landing/hero-backdrop";
+import { HomeCta } from "@/components/landing/home-cta";
+import { Video, Users, Shield, Zap } from "lucide-react";
+
+const FEATURES = [
+  {
+    icon: Video,
+    title: "HD in the room",
+    desc: "LiveKit video and audio that stays clear when the group grows.",
+  },
+  {
+    icon: Users,
+    title: "Up to 30 people",
+    desc: "Friends, standups, and small communities — one shared room.",
+  },
+  {
+    icon: Zap,
+    title: "A room in one click",
+    desc: "Host signed-in or as a guest. Share a short code, not a calendar.",
+  },
+  {
+    icon: Shield,
+    title: "The host decides",
+    desc: "Waiting room, recording, and screen-share stay under your control.",
+  },
+] as const;
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [joinCode, setJoinCode] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [guestStarting, setGuestStarting] = useState(false);
-  const [guestError, setGuestError] = useState("");
-  const [showGuestForm, setShowGuestForm] = useState(false);
-
-  async function handleNewMeeting() {
-    if (!user) {
-      router.push("/login?redirect=/dashboard");
-      return;
-    }
-    router.push("/dashboard");
-  }
-
-  async function handleGuestMeeting(e: React.FormEvent) {
-    e.preventDefault();
-    setGuestError("");
-    if (guestName.trim().length < 2) {
-      setGuestError("Enter your name (at least 2 characters).");
-      return;
-    }
-    setGuestStarting(true);
-    try {
-      const { meeting, host_token } = await api.createGuestMeeting(
-        guestName.trim(),
-      );
-      saveHostToken(meeting.code, host_token);
-      saveGuestHostName(meeting.code, guestName.trim());
-      router.push(`/m/${meeting.code}`);
-    } catch (err) {
-      setGuestError(
-        err instanceof Error ? err.message : "Could not start meeting.",
-      );
-    } finally {
-      setGuestStarting(false);
-    }
-  }
-
-  function handleJoin(e: React.FormEvent) {
-    e.preventDefault();
-    const code = formatMeetingCode(joinCode);
-    if (code) router.push(`/m/${code}`);
-  }
-
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col">
+      <div className="meet-atmosphere meet-atmosphere-page" aria-hidden />
       <Header />
 
-      <main className="flex-1">
-        <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(26,115,232,0.15)_0%,_transparent_60%)]" />
-          <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto max-w-3xl text-center">
-              <p className="mb-4 text-sm font-medium uppercase tracking-widest text-[var(--meet-primary)]">
-                Private video meetings
+      <main className="relative z-10 flex-1">
+        <div className="relative min-h-[calc(100vh-4rem)]">
+          <HeroBackdrop />
+          <section className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center px-4 py-16 sm:px-6 lg:max-w-7xl">
+            <div className="max-w-xl">
+              <p className="inline-flex items-center gap-2 rounded-full border border-[var(--meet-border)] bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--meet-primary-strong)]">
+                Live video rooms
               </p>
-              <h1 className="text-4xl font-semibold tracking-tight text-[var(--meet-text)] sm:text-5xl lg:text-6xl">
-                Meet with friends,
-                <span className="block text-[var(--meet-primary)]">
-                  on your own terms
+              <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--meet-text)] sm:text-5xl lg:text-[3.6rem]">
+                The call feels
+                <span className="mt-1 block bg-gradient-to-r from-[var(--meet-primary)] to-[var(--meet-accent)] bg-clip-text text-transparent">
+                  like everyone is here.
                 </span>
               </h1>
-              <p className="mt-6 text-lg text-[var(--meet-text-muted)] sm:text-xl">
-                No time limits. Up to 30 people per call. Your platform, your
-                rules — a Google Meet alternative built for you.
+              <p className="mt-5 max-w-md text-base leading-relaxed text-[var(--meet-text-muted)] sm:text-lg">
+                MeetMe is a room you own — unlimited time, a waiting room, and
+                host controls. No free-tier clock. No extra apps.
               </p>
+              <HomeCta />
             </div>
+          </section>
+        </div>
 
-            <div className="mx-auto mt-12 max-w-xl">
-              <div className="rounded-2xl border border-[var(--meet-border)] bg-[var(--meet-surface)]/80 p-6 backdrop-blur-sm">
-                <div className="flex flex-col gap-4 sm:flex-row">
-                  <Button
-                    size="lg"
-                    className="flex-1"
-                    onClick={handleNewMeeting}
-                  >
-                    <Video className="h-5 w-5" />
-                    New meeting
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="flex-1"
-                    variant="secondary"
-                    onClick={() => setShowGuestForm((v) => !v)}
-                  >
-                    <UserRound className="h-5 w-5" />
-                    Start as guest
-                  </Button>
-                </div>
-
-                {showGuestForm ? (
-                  <form
-                    onSubmit={handleGuestMeeting}
-                    className="mt-4 space-y-3 rounded-xl border border-[var(--meet-border)] bg-[var(--meet-bg)] p-4"
-                  >
-                    <p className="text-sm text-[var(--meet-text-muted)]">
-                      No account needed — you&apos;ll host as a guest.
-                    </p>
-                    {guestError ? (
-                      <p className="text-sm text-[var(--meet-danger)]">{guestError}</p>
-                    ) : null}
-                    <Input
-                      placeholder="Your name"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      minLength={2}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      loading={guestStarting}
-                    >
-                      Start guest meeting
-                    </Button>
-                  </form>
-                ) : null}
-
-                <div className="my-6 flex items-center gap-4">
-                  <div className="h-px flex-1 bg-[var(--meet-border)]" />
-                  <span className="text-sm text-[var(--meet-text-muted)]">or</span>
-                  <div className="h-px flex-1 bg-[var(--meet-border)]" />
-                </div>
-
-                <form onSubmit={handleJoin} className="flex gap-3">
-                  <Input
-                    placeholder="Paste link or code (e.g. 8k7-6erk-oic)"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button type="submit" variant="secondary" size="lg">
-                    Join
-                  </Button>
-                </form>
+        <section className="relative z-10 mx-3 mb-8 rounded-[2rem] bg-[var(--meet-surface)] px-4 py-16 sm:mx-5 sm:px-6 sm:py-20 lg:px-10">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+              <div className="lg:sticky lg:top-24 lg:self-start">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--meet-primary)]">
+                  In the room
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--meet-text)] sm:text-4xl">
+                  Presence first.
+                  <span className="block text-[var(--meet-text-muted)]">
+                    Tools stay out of the way.
+                  </span>
+                </h2>
               </div>
-            </div>
-          </div>
-        </section>
 
-        <section className="border-t border-[var(--meet-border)] bg-[var(--meet-surface)]/30 py-20">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <h2 className="text-center text-2xl font-semibold text-[var(--meet-text)]">
-              Everything you need for group calls
-            </h2>
-            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  icon: Video,
-                  title: "HD video & audio",
-                  desc: "Crystal-clear calls powered by LiveKit SFU technology.",
-                },
-                {
-                  icon: Users,
-                  title: "Up to 30 people",
-                  desc: "Comfortable group calls for friends, teams, and communities.",
-                },
-                {
-                  icon: Zap,
-                  title: "Instant meetings",
-                  desc: "Create a room in one click and share the link instantly.",
-                },
-                {
-                  icon: Shield,
-                  title: "Your platform",
-                  desc: "Self-hosted control. No surprise time limits or paywalls.",
-                },
-              ].map(({ icon: Icon, title, desc }) => (
-                <div
-                  key={title}
-                  className="rounded-2xl border border-[var(--meet-border)] bg-[var(--meet-surface)] p-6"
-                >
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--meet-primary-strong)]/20 text-[var(--meet-primary)]">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-medium text-[var(--meet-text)]">{title}</h3>
-                  <p className="mt-2 text-sm text-[var(--meet-text-muted)]">
-                    {desc}
-                  </p>
-                </div>
-              ))}
+              <ol className="divide-y divide-[var(--meet-border)] border-y border-[var(--meet-border)]">
+                {FEATURES.map(({ icon: Icon, title, desc }, index) => (
+                  <li
+                    key={title}
+                    className="grid gap-4 py-8 sm:grid-cols-[auto_1fr] sm:items-start sm:gap-8"
+                  >
+                    <span className="font-mono text-sm text-[var(--meet-primary)]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-4 w-4 text-[var(--meet-accent)]" />
+                        <h3 className="text-xl font-semibold tracking-tight text-[var(--meet-text)]">
+                          {title}
+                        </h3>
+                      </div>
+                      <p className="mt-2 max-w-md text-[var(--meet-text-muted)]">
+                        {desc}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-[var(--meet-border)] py-8 text-center text-sm text-[var(--meet-text-muted)]">
-        MeetMe — built for personal and friends use
+      <footer className="relative z-10 py-8 text-center text-sm text-[var(--meet-text-muted)]">
+        MeetMe — rooms you actually own
       </footer>
     </div>
   );

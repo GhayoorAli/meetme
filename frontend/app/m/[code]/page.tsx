@@ -17,8 +17,21 @@ import { formatMeetingCode } from "@/lib/utils";
 import type { JoinMeetingResponse, Meeting } from "@/types";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MeetingRoom } from "@/components/meeting/meeting-room";
+import dynamic from "next/dynamic";
 import { Video, AlertCircle, Clock } from "lucide-react";
+
+const MeetingRoom = dynamic(
+  () =>
+    import("@/components/meeting/meeting-room").then((mod) => mod.MeetingRoom),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--meet-bg)]">
+        <Spinner />
+      </div>
+    ),
+  },
+);
 
 export default function MeetingPage() {
   const params = useParams<{ code: string }>();

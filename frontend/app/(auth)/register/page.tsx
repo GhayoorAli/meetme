@@ -1,7 +1,8 @@
 "use client";
 
+import { AuthSheet } from "@/components/auth/auth-sheet";
+import { AuthDivider, GoogleSignInButton } from "@/components/auth/google-sign-in";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
@@ -40,15 +41,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardTitle>Create your account</CardTitle>
-      <p className="mt-2 text-sm text-[var(--meet-text-muted)]">
-        Start hosting meetings in seconds.
-      </p>
+    <AuthSheet
+      eyebrow="Get started"
+      title="Create your MeetMe account"
+      subtitle="A room in one click — then invite anyone with a short code."
+    >
+      <GoogleSignInButton />
+      <AuthDivider />
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error ? (
-          <p className="rounded-lg bg-[var(--meet-danger)]/10 px-4 py-3 text-sm text-[var(--meet-danger)]">
+          <p className="rounded-xl bg-[var(--meet-danger)]/10 px-4 py-3 text-sm text-[var(--meet-danger)]">
             {error}
           </p>
         ) : null}
@@ -78,44 +81,45 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-sm text-[var(--meet-text-muted)]">
-            Password
-          </label>
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            autoComplete="new-password"
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-sm text-[var(--meet-text-muted)]">
+              Password
+            </label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-[var(--meet-text-muted)]">
+              Confirm
+            </label>
+            <Input
+              type="password"
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-sm text-[var(--meet-text-muted)]">
-            Confirm password
-          </label>
-          <Input
-            type="password"
-            value={passwordConfirmation}
-            onChange={(e) => setPasswordConfirmation(e.target.value)}
-            required
-            autoComplete="new-password"
-          />
-        </div>
-
-        <Button type="submit" className="w-full" loading={loading}>
+        <Button type="submit" className="mt-2 w-full" size="lg" loading={loading}>
           Create account
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-[var(--meet-text-muted)]">
         Already have an account?{" "}
-        <Link href="/login" className="text-[var(--meet-primary)] hover:underline">
+        <Link href="/login" className="font-medium text-[var(--meet-primary)] hover:underline">
           Sign in
         </Link>
       </p>
-    </Card>
+    </AuthSheet>
   );
 }

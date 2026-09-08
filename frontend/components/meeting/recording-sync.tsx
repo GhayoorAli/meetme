@@ -179,8 +179,8 @@ function RecordingBanner({
       : `${names.length} participants are recording`;
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-16 z-30 -translate-x-1/2">
-      <div className="flex items-center gap-2 rounded-full border border-[var(--meet-danger)]/50 bg-[var(--meet-danger)]/15 px-4 py-1.5 text-sm text-[var(--meet-text)] shadow-lg backdrop-blur-sm">
+    <div className="pointer-events-none absolute left-1/2 top-20 z-30 -translate-x-1/2">
+      <div className="flex items-center gap-2 rounded-full border border-[var(--meet-danger)]/40 bg-[#0c1220]/80 px-4 py-1.5 text-sm text-white shadow-lg backdrop-blur-md">
         <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-[var(--meet-danger)]" />
         {label}
       </div>

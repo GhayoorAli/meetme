@@ -1,16 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --meet-bg: #202124;
-  --meet-surface: #292a2d;
-  --meet-surface-elevated: #3c4043;
-  --meet-primary: #8ab4f8;
-  --meet-primary-strong: #1a73e8;
-  --meet-text: #e8eaed;
-  --meet-text-muted: #9aa0a6;
-  --meet-border: #3c4043;
-  --meet-danger: #ea4335;
-  --meet-success: #34a853;
+  --meet-bg: #eef2f8;
+  --meet-surface: #ffffff;
+  --meet-surface-elevated: #ffffff;
+  --meet-stage: #070b16;
+  --meet-primary: #3d5afe;
+  --meet-primary-strong: #2f49d1;
+  --meet-primary-soft: #e7ebff;
+  --meet-accent: #ff7a45;
+  --meet-text: #0b1220;
+  --meet-text-muted: #5b6578;
+  --meet-border: rgba(11, 18, 32, 0.1);
+  --meet-danger: #e03e3e;
+  --meet-success: #1f8a5b;
+  --meet-shadow: 0 20px 48px rgba(47, 73, 209, 0.1);
   --background: var(--meet-bg);
   --foreground: var(--meet-text);
 }
@@ -28,37 +32,86 @@
 
 html {
   height: 100%;
+  background: #eef2f8;
 }
 
 body {
   min-height: 100%;
-  background: var(--meet-bg);
+  background: #eef2f8;
   color: var(--meet-text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--meet-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--meet-primary) 24%, transparent);
 }
 
-.lk-room-container {
-  background: var(--meet-bg) !important;
+.meet-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 55% 45% at 8% -5%, rgba(61, 90, 254, 0.18), transparent 58%),
+    radial-gradient(ellipse 40% 35% at 96% 8%, rgba(255, 122, 69, 0.14), transparent 52%),
+    radial-gradient(ellipse 80% 70% at 50% 8%, rgba(61, 90, 254, 0.16), transparent 58%),
+    radial-gradient(ellipse 50% 42% at 72% 12%, rgba(255, 122, 69, 0.1), transparent 52%),
+    radial-gradient(ellipse 55% 45% at 8% 100%, rgba(61, 90, 254, 0.18), transparent 58%),
+    radial-gradient(ellipse 40% 35% at 96% 100%, rgba(255, 122, 69, 0.14), transparent 52%),
+    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(61, 90, 254, 0.14), transparent 58%),
+    radial-gradient(ellipse 50% 42% at 28% 92%, rgba(255, 122, 69, 0.1), transparent 52%);
 }
 
-.lk-control-bar {
-  background: var(--meet-surface) !important;
-  border-top: 1px solid var(--meet-border) !important;
+.hero-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-.lk-button[data-lk-source="screen_share"] {
-  display: none !important;
+.meet-atmosphere-page {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
 }
 
-.lk-button {
-  border-radius: 9999px !important;
+.hero-stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  transform: translateZ(0);
 }
 
-.lk-participant-tile {
-  border-radius: 12px !important;
-  overflow: hidden !important;
+.hero-stage-canvas.is-ready {
+  opacity: 1;
+}
+
+.meet-card {
+  background: var(--meet-surface);
+  border: 1px solid var(--meet-border);
+  box-shadow: var(--meet-shadow);
+}
+
+.auth-sheet {
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 2.5rem;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  transform: translateZ(0);
+}
+
+@supports (corner-shape: squircle) {
+  .auth-sheet {
+    corner-shape: squircle;
+  }
+}
+
+.auth-sheet input {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  border-radius: 1rem;
 }

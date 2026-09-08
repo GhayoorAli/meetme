@@ -8,6 +8,7 @@ export type VideoBounds = {
 const SCREEN_SHARE_VIDEO_SELECTORS = [
   '.lk-participant-tile[data-lk-source="screen_share"] video',
   '[data-lk-source="screen_share"] video',
+  '[data-lk-source="screen_share"] .lk-participant-tile video',
   ".lk-focus-layout video",
   ".lk-focus-layout-wrapper video",
 ];
@@ -54,6 +55,20 @@ export function getVideoBoundsInContainer(
     width: videoRect.width,
     height: videoRect.height,
   };
+}
+
+export function boundsNearlyEqual(
+  a: VideoBounds | null,
+  b: VideoBounds | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    Math.abs(a.left - b.left) < 0.5 &&
+    Math.abs(a.top - b.top) < 0.5 &&
+    Math.abs(a.width - b.width) < 0.5 &&
+    Math.abs(a.height - b.height) < 0.5
+  );
 }
 
 export function isNormalizedPoint(point: [number, number]): boolean {

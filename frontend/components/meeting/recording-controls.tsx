@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { MeetingDockButton } from "@/components/meeting/meeting-dock-button";
 import { api } from "@/lib/api";
 import { useRoomRecording } from "@/lib/use-room-recording";
 import { useRecordingSync } from "@/components/meeting/recording-sync";
@@ -156,33 +156,20 @@ export function RecordingControls({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        size="sm"
-        variant={isRecording ? "danger" : "secondary"}
-        loading={requesting}
-        disabled={!isHost && permission === "denied"}
-        onClick={handleRecordClick}
-      >
-        {isRecording ? (
-          <Square className="h-4 w-4 fill-current" />
-        ) : permission === "pending" ? (
-          <Clock className="h-4 w-4" />
-        ) : (
-          <Circle
-            className={`h-4 w-4 ${isRecording ? "" : "fill-[var(--meet-danger)] text-[var(--meet-danger)]"}`}
-          />
-        )}
-        {buttonLabel()}
-        {isRecording ? (
-          <span className="ml-1 inline-flex h-2 w-2 animate-pulse rounded-full bg-white" />
-        ) : null}
-      </Button>
-      {error ? (
-        <p className="max-w-[200px] text-right text-[10px] text-[var(--meet-danger)]">
-          {error}
-        </p>
-      ) : null}
-    </div>
+    <MeetingDockButton
+      title={error || buttonLabel()}
+      danger={isRecording}
+      loading={requesting}
+      disabled={!isHost && permission === "denied"}
+      onClick={handleRecordClick}
+    >
+      {isRecording ? (
+        <Square className="h-4 w-4 fill-current" />
+      ) : permission === "pending" ? (
+        <Clock className="h-4 w-4" />
+      ) : (
+        <Circle className="h-4 w-4 fill-[var(--meet-danger)] text-[var(--meet-danger)]" />
+      )}
+    </MeetingDockButton>
   );
 }

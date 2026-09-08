@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      await api.initCsrf();
       const currentUser = await api.getUser();
       setUser(currentUser);
     } catch {

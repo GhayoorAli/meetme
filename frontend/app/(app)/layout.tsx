@@ -18,20 +18,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-full items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (!user) return null;
+  if (!loading && !user) return null;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col">
+      <div className="meet-atmosphere meet-atmosphere-page" aria-hidden />
       <Header />
-      <main className="flex-1">{children}</main>
+      {loading ? (
+        <div className="relative z-10 flex flex-1 items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <main className="relative z-10 flex-1">{children}</main>
+      )}
     </div>
   );
 }

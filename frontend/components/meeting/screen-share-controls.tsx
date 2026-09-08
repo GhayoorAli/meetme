@@ -1,10 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { MeetingDockButton } from "@/components/meeting/meeting-dock-button";
 import { useScreenShareSync } from "@/components/meeting/screen-share-sync";
 import { api } from "@/lib/api";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
 import { ParticipantEvent } from "livekit-client";
+import {
+  SCREEN_SHARE_CAPTURE,
+  SCREEN_SHARE_PUBLISH,
+  setLocalScreenShareLoad,
+} from "@/lib/livekit-options";
 import { MonitorUp, Clock, MonitorOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -50,7 +55,9 @@ export function ScreenShareControls({
 
   useEffect(() => {
     const syncSharing = () => {
-      setSharing(localParticipant.isScreenShareEnabled);
+      const enabled = localParticipant.isScreenShareEnabled;
+      setSharing(enabled);
+      setLocalScreenShareLoad(localParticipant, enabled);
     };
     syncSharing();
     localParticipant.on(ParticipantEvent.LocalTrackPublished, syncSharing);
@@ -58,6 +65,7 @@ export function ScreenShareControls({
     return () => {
       localParticipant.off(ParticipantEvent.LocalTrackPublished, syncSharing);
       localParticipant.off(ParticipantEvent.LocalTrackUnpublished, syncSharing);
+      setLocalScreenShareLoad(localParticipant, false);
     };
   }, [localParticipant]);
 
@@ -102,6 +110,7 @@ export function ScreenShareControls({
   async function stopSharing() {
     try {
       await localParticipant.setScreenShareEnabled(false);
+      setLocalScreenShareLoad(localParticipant, false);
       await publishScreenShareEvent({
         type: "screen_share_stopped",
         identity: localIdentity,
@@ -121,7 +130,12 @@ export function ScreenShareControls({
 
     if (canShare) {
       try {
-        await localParticipant.setScreenShareEnabled(true, { audio: false });
+        await localParticipant.setScreenShareEnabled(
+          true,
+          SCREEN_SHARE_CAPTURE,
+          SCREEN_SHARE_PUBLISH,
+        );
+        setLocalScreenShareLoad(localParticipant, true);
         await publishScreenShareEvent({
           type: "screen_share_started",
           identity: localIdentity,
@@ -175,9 +189,9 @@ export function ScreenShareControls({
   }
 
   return (
-    <Button
-      size="sm"
-      variant={sharing ? "danger" : "secondary"}
+    <MeetingDockButton
+      title={label()}
+      danger={sharing}
       loading={requesting}
       disabled={!isHost && permission === "denied"}
       onClick={handleClick}
@@ -189,10 +203,6 @@ export function ScreenShareControls({
       ) : (
         <MonitorUp className="h-4 w-4" />
       )}
-      {label()}
-      {sharing ? (
-        <span className="ml-1 inline-flex h-2 w-2 animate-pulse rounded-full bg-white" />
-      ) : null}
-    </Button>
+    </MeetingDockButton>
   );
 }

@@ -1,22 +1,31 @@
 "use client";
 
+import { AuthSheet } from "@/components/auth/auth-sheet";
+import { AuthDivider, GoogleSignInButton } from "@/components/auth/google-sign-in";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState, Suspense } from "react";
 
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_not_configured:
+    "Google sign-in is not set up yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+  google_denied: "Google sign-in was cancelled.",
+  google_failed: "Google sign-in failed. Try again.",
+};
+
 function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/dashboard";
+  const googleError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(GOOGLE_ERRORS[googleError ?? ""] ?? "");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -34,15 +43,17 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardTitle>Sign in to MeetMe</CardTitle>
-      <p className="mt-2 text-sm text-[var(--meet-text-muted)]">
-        Host meetings and manage your rooms.
-      </p>
+    <AuthSheet
+      eyebrow="Welcome back"
+      title="Sign in to your rooms"
+      subtitle="Host meetings, admit guests, and pick up where you left off."
+    >
+      <GoogleSignInButton next={redirect} />
+      <AuthDivider />
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error ? (
-          <p className="rounded-lg bg-[var(--meet-danger)]/10 px-4 py-3 text-sm text-[var(--meet-danger)]">
+          <p className="rounded-xl bg-[var(--meet-danger)]/10 px-4 py-3 text-sm text-[var(--meet-danger)]">
             {error}
           </p>
         ) : null}
@@ -73,24 +84,34 @@ function LoginForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full" loading={loading}>
+        <Button type="submit" className="mt-2 w-full" size="lg" loading={loading}>
           Sign in
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-[var(--meet-text-muted)]">
         No account?{" "}
-        <Link href="/register" className="text-[var(--meet-primary)] hover:underline">
+        <Link href="/register" className="font-medium text-[var(--meet-primary)] hover:underline">
           Create one
         </Link>
       </p>
-    </Card>
+    </AuthSheet>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <AuthSheet
+          eyebrow="Welcome back"
+          title="Sign in to your rooms"
+          subtitle="Host meetings, admit guests, and pick up where you left off."
+        >
+          <div className="h-40 animate-pulse rounded-2xl bg-white/40" />
+        </AuthSheet>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

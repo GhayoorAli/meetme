@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
-import "@livekit/components-styles";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MeetMe — Video meetings for you and your friends",
+  title: "MeetMe — Rooms that belong to you",
   description:
-    "Host secure video meetings with your friends. No time limits, up to 30 participants.",
+    "Unlimited video meetings with waiting rooms, whiteboard, and host controls.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -25,9 +24,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      style={{ backgroundColor: "#eef2f8" }}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+      <body
+        className="min-h-full flex flex-col"
+        style={{ backgroundColor: "#eef2f8" }}
+        suppressHydrationWarning
+      >
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -17,7 +17,7 @@ export function MeetingToasts({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <div className="pointer-events-none absolute bottom-24 left-1/2 z-40 flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4">
+    <div className="pointer-events-none absolute bottom-28 left-1/2 z-40 flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4">
       {toasts.map((toast) => (
         <ToastRow key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
@@ -40,9 +40,9 @@ function ToastRow({
   return (
     <div
       className={cn(
-        "pointer-events-auto rounded-xl border border-[var(--meet-border)] bg-[var(--meet-surface-elevated)] px-4 py-3 text-sm text-[var(--meet-text)] shadow-lg",
-        toast.tone === "warning" && "border-[var(--meet-danger)]/40",
-        toast.tone === "success" && "border-[var(--meet-success)]/40",
+        "pointer-events-auto rounded-2xl border border-white/12 bg-[#0c1220]/90 px-4 py-3 text-sm text-white shadow-lg backdrop-blur-md",
+        toast.tone === "warning" && "border-[var(--meet-danger)]/50",
+        toast.tone === "success" && "border-[var(--meet-success)]/50",
       )}
     >
       {toast.message}
