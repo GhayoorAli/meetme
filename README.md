@@ -1,36 +1,51 @@
 # MeetMe
 
-A self-hosted video meeting platform — a lightweight Google Meet alternative with waiting rooms, guest hosting, collaborative tools, and host-controlled permissions. Built with **Next.js**, **PostgreSQL**, **Prisma**, and **LiveKit**. Native mobile is planned for a later phase.
+A self-hosted Google Meet–style video platform with waiting rooms, guest hosting, and real-time collaboration — built with Next.js, PostgreSQL, Prisma, and LiveKit.
+
+[Live demo](https://www.meet-me.tech) · [GitHub](https://github.com/GhayoorAli/meetme)
 
 ---
 
-## Features
+## The problem
 
-| Category | Capabilities |
-|----------|--------------|
-| **Meetings** | Create instant meetings, share links, guest or registered host |
-| **Waiting room** | Host admits or denies participants before they enter |
-| **Video & audio** | HD calls via LiveKit WebRTC |
-| **Screen sharing** | Host-approved screen share with live highlighter overlay (web) |
-| **Collaboration** | Shared whiteboard with admin-assigned editor (web) |
-| **Engagement** | Hand raise, participant sidebar, copy meeting link |
-| **Permissions** | Host controls recording and screen-share access |
-| **Accounts** | Register / login, dashboard, admin panel |
-| **Guests** | Join or host without an account |
+Google Meet’s free plan caps meetings at about one hour, and it is light on built-in tools like recording and a shared whiteboard. I built MeetMe as my own meet-style platform with no meeting time limit, plus host-controlled recording, a collaborative whiteboard, waiting rooms, guest hosting, and screen-share tools — so calls are not cut short and collaboration is not bolted on through other apps.
+
+---
+
+## My role
+
+Solo full-stack developer. I designed and built the product end to end: Next.js UI and REST API, jose JWT sessions, Prisma / PostgreSQL schema, LiveKit rooms and data-channel sync, Docker local stack, and production deploy on Vercel, Supabase Postgres, and LiveKit Cloud.
 
 ---
 
 ## Tech stack
 
-| Layer | Technology | Role |
-|-------|------------|------|
-| **Web** | [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript | UI, meeting room, **and REST API** (Route Handlers) |
-| **Styling** | Tailwind CSS 4 | Design system and responsive layout |
-| **Auth** | jose HS256 JWT (httpOnly cookie) | Sessions |
-| **ORM** | [Prisma](https://www.prisma.io/) | PostgreSQL schema and queries |
-| **Database** | PostgreSQL 16 | Users, meetings, participants, permissions |
-| **Video SDK** | [LiveKit](https://livekit.io/) | WebRTC rooms, tracks, data messages |
-| **Infrastructure** | Docker Compose | PostgreSQL and LiveKit (local) |
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Node.js
+- REST API
+- PostgreSQL
+- Docker
+- Vercel
+- Git / GitHub
+
+Next.js 16 (App Router) serves both the UI and `/api`. Prisma talks to PostgreSQL. LiveKit handles WebRTC media and in-call data messages. Locally, Docker Compose runs Postgres and LiveKit; production uses Vercel + Supabase + LiveKit Cloud.
+
+---
+
+## Features
+
+- Instant meetings with shareable codes, registered hosts, or guest hosts
+- Waiting room so the host admits or denies people before they enter
+- HD video and audio through LiveKit WebRTC
+- Host-approved screen share with a live highlighter overlay
+- Shared whiteboard with a single host-assigned editor
+- Hand raise, participant sidebar, and one-click copy of the join link
+- Host-controlled recording and screen-share permissions
+- Register / login, dashboard, and admin panel
+- Join or host without an account
 
 ---
 
@@ -119,6 +134,46 @@ sequenceDiagram
 4. The **API** issues a LiveKit JWT; the **client** connects to the WebRTC room.
 5. In-call features (whiteboard, highlighter, hand raise) sync over LiveKit data topics.
 6. **Host** can end the meeting for everyone, or participants can leave.
+
+---
+
+## Challenges & solutions
+
+### Shared whiteboard without colliding strokes
+
+**Challenge:** Several people drawing at once over WebRTC made strokes collide and boards diverge for late joiners.
+
+**Solution:** The host assigns a single editor (handover or revoke). Strokes sync over LiveKit data channels, not API polling. Each stroke has an ID so clients can dedupe, and late joiners request a full `sync_full` snapshot.
+
+### Screen-share highlighter across resolutions
+
+**Challenge:** Pointer overlays drifted when the sharer and viewers had different screen sizes.
+
+**Solution:** The highlighter sends normalized coordinates (0–1). Each client maps them onto its own video bounds so the mark stays on the same content.
+
+### Auth and API on one origin
+
+**Challenge:** A separate API host made cookie sessions and CORS painful in production.
+
+**Solution:** The REST API lives in Next.js Route Handlers. Sessions use a jose HS256 JWT in an httpOnly `meetme_session` cookie, so the browser stays same-origin on `/api`.
+
+### Leave looked like a crash
+
+**Challenge:** Leaving a call disconnected LiveKit, which fired `onDisconnected` and showed a connection-failed modal.
+
+**Solution:** Leave and End are marked intentional. That disconnect sends people back to the dashboard instead of treating it as an error.
+
+### Prisma on a pooled production database
+
+**Challenge:** Schema migrations fail through a transaction pooler (PgBouncer), while the app needs pooled connections at runtime.
+
+**Solution:** `DATABASE_URL` uses the Supabase pooler on port 6543 with `pgbouncer=true`. `DIRECT_URL` uses the session or direct port 5432 for `prisma migrate`.
+
+### Media load during share and recording
+
+**Challenge:** Screen share plus camera plus in-browser recording could overload a laptop and stall the room.
+
+**Solution:** Share is capped (720p / 10 fps), the camera drops to a low layer while sharing, background blur pauses, and local recording uses a lighter 360p / 6 fps clone of the audio.
 
 ---
 
