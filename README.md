@@ -1,6 +1,6 @@
 # MeetMe
 
-A self-hosted video meeting platform — a lightweight Google Meet alternative with waiting rooms, guest hosting, collaborative tools, and host-controlled permissions. Built with **Next.js**, **PostgreSQL**, **Prisma**, **LiveKit**, and **Expo**.
+A self-hosted video meeting platform — a lightweight Google Meet alternative with waiting rooms, guest hosting, collaborative tools, and host-controlled permissions. Built with **Next.js**, **PostgreSQL**, **Prisma**, and **LiveKit**. Native mobile is planned for a later phase.
 
 ---
 
@@ -17,7 +17,6 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 | **Permissions** | Host controls recording and screen-share access |
 | **Accounts** | Register / login, dashboard, admin panel |
 | **Guests** | Join or host without an account |
-| **Mobile** | Expo app for auth, dashboard, waiting room, and LiveKit calls |
 
 ---
 
@@ -27,11 +26,10 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 |-------|------------|------|
 | **Web** | [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript | UI, meeting room, **and REST API** (Route Handlers) |
 | **Styling** | Tailwind CSS 4 | Design system and responsive layout |
-| **Auth** | jose HS256 JWT (httpOnly cookie on web, Bearer on mobile) | Sessions |
+| **Auth** | jose HS256 JWT (httpOnly cookie) | Sessions |
 | **ORM** | [Prisma](https://www.prisma.io/) | PostgreSQL schema and queries |
 | **Database** | PostgreSQL 16 | Users, meetings, participants, permissions |
 | **Video SDK** | [LiveKit](https://livekit.io/) | WebRTC rooms, tracks, data messages |
-| **Mobile** | Expo (Router) + LiveKit React Native | Native camera/mic meetings |
 | **Infrastructure** | Docker Compose | PostgreSQL and LiveKit (local) |
 
 ---
@@ -42,11 +40,8 @@ A self-hosted video meeting platform — a lightweight Google Meet alternative w
 graph TB
     subgraph clients ["Clients"]
         Web["Next.js web app"]
-        Mobile["Expo app"]
         LKWeb["LiveKit JS"]
-        LKMobile["LiveKit React Native"]
         Web --> LKWeb
-        Mobile --> LKMobile
     end
 
     subgraph next ["Next.js"]
@@ -63,12 +58,9 @@ graph TB
     end
 
     Web -->|"same-origin HTTP"| API
-    Mobile -->|"HTTP + Bearer"| API
     API --> DB
     Token -->|"JWT"| Web
-    Token -->|"JWT"| Mobile
     LKWeb -->|"WebRTC"| LKS
-    LKMobile -->|"WebRTC"| LKS
 ```
 
 ### What Next.js handles
@@ -83,7 +75,7 @@ graph TB
   - Screen-share state
   - Screen-share highlighter (normalized coordinates)
   - Recording permission sync
-- Session: httpOnly `meetme_session` cookie on web; JWT in SecureStore on mobile
+- Session: httpOnly `meetme_session` cookie
 
 ### What the API handles
 
@@ -122,7 +114,7 @@ sequenceDiagram
 ```
 
 1. **Host** creates a meeting (registered user or guest with name).
-2. **Participants** open `/m/{code}` (or the Expo join screen) and request to join.
+2. **Participants** open `/m/{code}` and request to join.
 3. If the waiting room is enabled, the **host admits** them from People.
 4. The **API** issues a LiveKit JWT; the **client** connects to the WebRTC room.
 5. In-call features (whiteboard, highlighter, hand raise) sync over LiveKit data topics.
@@ -139,7 +131,6 @@ meetme/
 │   ├── components/    # UI + meeting-room feature modules
 │   ├── lib/server/    # Auth, meetings, LiveKit, Prisma
 │   └── prisma/        # Schema and migrations
-├── mobile/            # Expo app (same JSON API)
 ├── scripts/           # dev.sh, dev-local.ps1
 ├── docker-compose.yml # PostgreSQL + LiveKit
 └── livekit.yaml       # LiveKit server config (reference)
@@ -149,10 +140,9 @@ meetme/
 
 ## Prerequisites
 
-- **Node.js** 20+ and **pnpm** (web)
+- **Node.js** 20+ and **pnpm**
 - **Docker** & Docker Compose (PostgreSQL, LiveKit)
 - **Git**
-- **Expo** toolchain for the mobile app (EAS or a local Android/iOS build — LiveKit does not run in Expo Go)
 
 ---
 
@@ -210,35 +200,6 @@ pnpm dev
 
 Open **http://localhost:3000**. The first registered user becomes an admin.
 
-### 4. Mobile (Expo)
-
-```bash
-cd mobile
-npm install
-cp .env.example .env
-```
-
-Set `EXPO_PUBLIC_API_URL` to your PC’s LAN address, not `localhost` (that is the phone itself):
-
-```env
-EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
-```
-
-For a physical device, also point LiveKit at the same LAN IP:
-
-- `LIVEKIT_URL=ws://192.168.1.10:7880` in `frontend/.env.local`
-- `LIVEKIT_NODE_IP=192.168.1.10` when starting Compose
-- Restart Next.js after changing `LIVEKIT_URL`
-
-LiveKit needs a **native build** (not Expo Go):
-
-```bash
-npx expo run:android
-# or: npx expo run:ios
-```
-
-To try the **live** API from a phone without an emulator, use an EAS preview APK (see Deployment). Keep `mobile/.env` on `127.0.0.1` for local Next.js; EAS `preview` already sets `EXPO_PUBLIC_API_URL` to the production site.
-
 ---
 
 ## Environment variables
@@ -252,11 +213,8 @@ To try the **live** API from a phone without an emulator, use an EAS preview APK
 | `APP_URL` | Web | Public site URL (join links) |
 | `LIVEKIT_URL` | Web | WebSocket URL returned to clients |
 | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Web | LiveKit credentials |
-| `LIVEKIT_NODE_IP` | Compose | Advertised IP for mobile/LAN WebRTC |
-| `EXPO_PUBLIC_API_URL` | Mobile | Next.js origin, e.g. `http://192.168.1.10:3000` |
+| `LIVEKIT_NODE_IP` | Compose | Advertised IP for LAN WebRTC |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Web | Google OAuth web client (see below) |
-| `GOOGLE_IOS_CLIENT_ID` / `GOOGLE_ANDROID_CLIENT_ID` | Web | Optional native client IDs for Expo ID tokens |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Mobile | Same value as `GOOGLE_CLIENT_ID` |
 
 ### Google sign-in
 
@@ -267,19 +225,18 @@ Email/password always works. Google is optional.
 3. Production: origin `https://www.your-domain.com`, redirect `https://www.your-domain.com/api/auth/google/callback` (add both `www` and apex if both are used).
 4. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `frontend/.env.local` (local) and on Vercel (live). `APP_URL` must match the site people actually open, or Google will show the Vercel hostname.
 
-A Google login with the same Gmail as an existing account is linked to that user. Native Google on Expo needs extra iOS/Android client IDs and `EXPO_PUBLIC_GOOGLE_*` in `mobile/.env`; without those IDs the mobile app hides the Google button.
+A Google login with the same Gmail as an existing account is linked to that user.
 
 ---
 
 ## API overview
 
-Auth login/register return `{ data: User, token }`. Web stores the JWT in an httpOnly cookie; mobile sends `Authorization: Bearer <token>`.
+Auth login/register return `{ data: User, token }`. The web app stores the JWT in an httpOnly cookie.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/auth/register`, `/api/auth/login` | Authentication |
-| `GET` | `/api/auth/google` | Start Google OAuth (web) |
-| `POST` | `/api/auth/google` | Exchange Google ID token (mobile) |
+| `GET` | `/api/auth/google` | Start Google OAuth |
 | `POST` | `/api/auth/logout` | Clear session cookie |
 | `GET` | `/api/user` | Current user |
 | `POST` | `/api/meetings` | Create meeting (auth) |
@@ -300,9 +257,8 @@ Auth login/register return `{ data: User, token }`. Web stores the JWT in an htt
 | Web + API (`frontend/`) | `pnpm dev` | [Vercel](https://vercel.com) or `frontend/Dockerfile` |
 | PostgreSQL | Docker Compose (`5432`) | [Supabase](https://supabase.com) or other managed Postgres |
 | LiveKit | Docker Compose (`7880`) | [LiveKit Cloud](https://livekit.io/cloud) |
-| Mobile (`mobile/`) | Expo dev client / emulator | [EAS Build](https://docs.expo.dev/build/introduction/) (preview APK, then Play/App Store) |
 
-Vercel hosts **only** the Next.js site and `/api`. Video is LiveKit Cloud. The phone app is a native binary (EAS / stores), not a Vercel project.
+Vercel hosts the Next.js site and `/api`. Video is LiveKit Cloud.
 
 Use HTTPS and `wss://` LiveKit URLs in production. Set a strong `AUTH_SECRET`. Do not commit database or API secrets.
 
@@ -351,18 +307,6 @@ prisma migrate deploy && prisma generate && next build
 
 Reuse a LiveKit Cloud project (no Agents). Copy the WebSocket URL (`wss://`) and API key/secret. Do not set `LIVEKIT_NODE_IP` in production — that is only for local Docker.
 
-### Mobile (EAS)
-
-The website can be live while the app is not in any store. A preview APK is for testers; Play Store needs a Google Play developer account and an **AAB** (`eas build --profile production`).
-
-```bash
-cd mobile
-npx eas-cli login
-npx eas-cli build -p android --profile preview
-```
-
-Install the APK from the Expo build page (or scan the QR code) on a **physical phone**. Do not use Expo Go. Preview builds set `EXPO_PUBLIC_API_URL` to the production site in `mobile/eas.json` — change that URL if your domain is different. iOS needs an Apple Developer account and `eas build -p ios`.
-
 ---
 
 ## Troubleshooting
@@ -376,9 +320,6 @@ Install the APK from the Expo build page (or scan the QR code) on a **physical p
 | No video in production | `LIVEKIT_URL` must be `wss://` from LiveKit Cloud; redeploy after env changes |
 | Google: “not set up yet” | Add `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and redeploy; or use email/password |
 | Google shows `*.vercel.app` | Set `APP_URL` to the custom domain and open the app on that domain |
-| Phone cannot reach local API | LAN IP in `EXPO_PUBLIC_API_URL`; allow port 3000 |
-| Phone has no media on LAN | `LIVEKIT_URL` and `LIVEKIT_NODE_IP` = LAN IP; recreate the LiveKit container |
-| Expo Go / WebRTC crash | Use `expo run:android` or an EAS APK, not Expo Go |
 
 ---
 
