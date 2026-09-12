@@ -26,6 +26,7 @@ Solo full-stack developer. I designed and built the product end to end: Next.js 
 - Tailwind CSS
 - Node.js
 - REST API
+- SupaBase
 - PostgreSQL
 - Docker
 - Vercel
