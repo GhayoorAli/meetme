@@ -75,12 +75,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <div className="mb-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 pb-28 sm:px-6 sm:py-10">
+      <div className="mb-8 sm:mb-10">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--meet-accent)]">
           Your rooms
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--meet-text)]">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--meet-text)] sm:text-3xl">
           Welcome back, {user?.name?.split(" ")[0]}
         </h1>
         <p className="mt-1 text-[var(--meet-text-muted)]">
@@ -120,7 +120,7 @@ export default function DashboardPage() {
             Enter the meeting code shared with you.
           </p>
           <form onSubmit={handleJoin} className="mt-6 flex flex-col gap-2">
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Input
                 value={joinCode}
                 onChange={(e) => {
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 placeholder="Paste link or code"
                 className="flex-1"
               />
-              <Button type="submit" variant="secondary">
+              <Button type="submit" variant="secondary" className="sm:w-auto">
                 Join
               </Button>
             </div>

@@ -6,7 +6,7 @@ const POINTS = [
 
 export function AuthBrand() {
   return (
-    <div className="relative mx-auto flex w-full max-w-md flex-col justify-center lg:mx-0">
+    <div className="relative mx-auto hidden w-full max-w-md flex-col justify-center lg:mx-0 lg:flex">
       <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--meet-primary)]">
         MeetMe
       </p>

@@ -126,7 +126,6 @@ function TrayGear({ title, onClick }: { title: string; onClick: () => void }) {
 export function MeetingMediaControls() {
   const trayId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-  const closeTimer = useRef<number | null>(null);
   const [openTray, setOpenTray] = useState<TrayKind | null>(null);
   const [deviceMenu, setDeviceMenu] = useState<"mic" | "speaker" | "camera" | null>(
     null,
@@ -153,56 +152,18 @@ export function MeetingMediaControls() {
   const { mode, supported: blurSupported, busy: blurBusy, applyMode } =
     useBackgroundEffects();
 
-  const clearClose = useCallback(() => {
-    if (closeTimer.current != null) {
-      window.clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  }, []);
-
-  const open = useCallback(
-    (kind: TrayKind) => {
-      clearClose();
-      setOpenTray((current) => {
-        if (current !== kind) {
-          setDeviceMenu(null);
-          setEffectsOpen(false);
-        }
-        return kind;
-      });
-    },
-    [clearClose],
-  );
-
-  const scheduleClose = useCallback(() => {
-    clearClose();
-    closeTimer.current = window.setTimeout(() => {
-      setOpenTray(null);
-      setDeviceMenu(null);
-      setEffectsOpen(false);
-    }, 220);
-  }, [clearClose]);
-
-  const toggleTray = useCallback(
-    (kind: TrayKind) => {
-      clearClose();
-      setOpenTray((current) => {
-        if (current === kind) {
-          setDeviceMenu(null);
-          setEffectsOpen(false);
-          return null;
-        }
+  const toggleTray = useCallback((kind: TrayKind) => {
+    setOpenTray((current) => {
+      if (current === kind) {
         setDeviceMenu(null);
         setEffectsOpen(false);
-        return kind;
-      });
-    },
-    [clearClose],
-  );
-
-  useEffect(() => {
-    return () => clearClose();
-  }, [clearClose]);
+        return null;
+      }
+      setDeviceMenu(kind === "mic" ? "mic" : "camera");
+      setEffectsOpen(false);
+      return kind;
+    });
+  }, []);
 
   useEffect(() => {
     if (!openTray) return;
@@ -255,8 +216,6 @@ export function MeetingMediaControls() {
           id={`${trayId}-mic`}
           role="dialog"
           aria-label="Audio options"
-          onMouseEnter={clearClose}
-          onMouseLeave={scheduleClose}
         >
           <div className="meet-media-tray-body">
             <div className="meet-media-tray-stack">
@@ -325,8 +284,6 @@ export function MeetingMediaControls() {
           id={`${trayId}-camera`}
           role="dialog"
           aria-label="Camera options"
-          onMouseEnter={clearClose}
-          onMouseLeave={scheduleClose}
         >
           <div className="meet-media-tray-body">
             <div className="meet-media-tray-stack">
@@ -426,9 +383,6 @@ export function MeetingMediaControls() {
           aria-label="Microphone options"
           aria-expanded={openTray === "mic"}
           aria-controls={`${trayId}-mic`}
-          onMouseEnter={() => open("mic")}
-          onMouseLeave={scheduleClose}
-          onFocus={() => open("mic")}
           onClick={() => toggleTray("mic")}
         >
           {openTray === "mic" ? (
@@ -460,9 +414,6 @@ export function MeetingMediaControls() {
           aria-label="Camera options"
           aria-expanded={openTray === "camera"}
           aria-controls={`${trayId}-camera`}
-          onMouseEnter={() => open("camera")}
-          onMouseLeave={scheduleClose}
-          onFocus={() => open("camera")}
           onClick={() => toggleTray("camera")}
         >
           {openTray === "camera" ? (

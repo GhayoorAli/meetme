@@ -12,7 +12,7 @@ export function AuthSheet({
   children: ReactNode;
 }) {
   return (
-    <div className="auth-sheet w-full max-w-md p-7 sm:p-8">
+    <div className="auth-sheet w-full max-w-md p-5 sm:p-8">
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--meet-primary)]">
         {eyebrow}
       </p>

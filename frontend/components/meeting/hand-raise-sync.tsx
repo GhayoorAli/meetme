@@ -41,7 +41,7 @@ export function HandRaiseProvider({
   children: ReactNode;
   localIdentity: string;
   localName: string;
-  onToast: (message: string, tone?: "info" | "success" | "warning") => void;
+  onToast: (message: string, tone?: "info" | "success" | "warning", key?: string) => void;
 }) {
   const room = useRoomContext();
   const [raisedHands, setRaisedHands] = useState<Map<string, string>>(
@@ -66,7 +66,7 @@ export function HandRaiseProvider({
             return next;
           });
           if (message.identity !== localIdentity) {
-            onToast(`${message.name} raised their hand`, "info");
+            onToast(`${message.name} raised their hand`, "info", "hand-raise");
           }
         } else {
           setRaisedHands((prev) => {
@@ -75,7 +75,7 @@ export function HandRaiseProvider({
             return next;
           });
           if (message.identity !== localIdentity) {
-            onToast(`${message.name} lowered their hand`, "info");
+            onToast(`${message.name} lowered their hand`, "info", "hand-raise");
           }
         }
       } catch {
@@ -103,7 +103,7 @@ export function HandRaiseProvider({
       else map.delete(localIdentity);
       return map;
     });
-    onToast(next ? "Hand raised" : "Hand lowered", "info");
+    onToast(next ? "Hand raised" : "Hand lowered", "info", "hand-raise");
   }, [isHandRaised, room, localIdentity, localName, onToast]);
 
   return (

@@ -33,14 +33,14 @@ export default function HomePage() {
       <Header />
 
       <main className="relative z-10 flex-1">
-        <div className="relative min-h-[calc(100vh-4rem)]">
+        <div className="relative min-h-[calc(100dvh-3.5rem)] sm:min-h-[calc(100dvh-4rem)]">
           <HeroBackdrop />
-          <section className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center px-4 py-16 sm:px-6 lg:max-w-7xl">
+          <section className="relative z-10 mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-6xl flex-col justify-center px-4 py-10 sm:min-h-[calc(100dvh-4rem)] sm:px-6 sm:py-16 lg:max-w-7xl">
             <div className="max-w-xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-[var(--meet-border)] bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--meet-primary-strong)]">
                 Live video rooms
               </p>
-              <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--meet-text)] sm:text-5xl lg:text-[3.6rem]">
+              <h1 className="mt-5 text-3xl font-semibold leading-[1.05] tracking-tight text-[var(--meet-text)] sm:text-5xl lg:text-[3.6rem]">
                 The call feels
                 <span className="mt-1 block bg-gradient-to-r from-[var(--meet-primary)] to-[var(--meet-accent)] bg-clip-text text-transparent">
                   like everyone is here.
@@ -55,7 +55,7 @@ export default function HomePage() {
           </section>
         </div>
 
-        <section className="relative z-10 mx-3 mb-8 rounded-[2rem] bg-[var(--meet-surface)] px-4 py-16 sm:mx-5 sm:px-6 sm:py-20 lg:px-10">
+        <section className="relative z-10 mx-3 mb-8 rounded-[1.5rem] bg-[var(--meet-surface)] px-4 py-10 sm:mx-5 sm:rounded-[2rem] sm:px-6 sm:py-20 lg:px-10">
           <div className="mx-auto max-w-6xl">
             <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
               <div className="lg:sticky lg:top-24 lg:self-start">
@@ -98,7 +98,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="relative z-10 py-8 text-center text-sm text-[var(--meet-text-muted)]">
+      <footer className="relative z-10 px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-8 text-center text-sm text-[var(--meet-text-muted)]">
         MeetMe — rooms you actually own
       </footer>
     </div>

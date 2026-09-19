@@ -58,16 +58,15 @@ export function HomeCta() {
   }
 
   return (
-    <div className="mt-10 rounded-3xl border border-white/50 bg-white/25 p-5 shadow-none backdrop-blur-md sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button size="lg" className="flex-1" onClick={handleNewMeeting}>
+    <div className="home-cta mt-10 rounded-3xl border border-white/50 bg-white/25 p-5 shadow-none backdrop-blur-md sm:p-6">
+      <div className="home-cta-actions">
+        <Button className="home-cta-btn" onClick={handleNewMeeting}>
           <Video className="h-5 w-5" />
           New meeting
         </Button>
         <Button
-          size="lg"
-          className="flex-1"
           variant="secondary"
+          className="home-cta-btn"
           onClick={() => setShowGuestForm((v) => !v)}
         >
           <UserRound className="h-5 w-5" />
@@ -91,9 +90,13 @@ export function HomeCta() {
             value={guestName}
             onChange={(e) => setGuestName(e.target.value)}
             minLength={2}
-            className="border-white/50 bg-white/30"
+            className="home-cta-btn border-white/50 bg-white/30"
           />
-          <Button type="submit" className="w-full" loading={guestStarting}>
+          <Button
+            type="submit"
+            className="home-cta-btn"
+            loading={guestStarting}
+          >
             Start guest meeting
           </Button>
         </form>
@@ -107,14 +110,14 @@ export function HomeCta() {
         <div className="h-px flex-1 bg-[var(--meet-border)]" />
       </div>
 
-      <form onSubmit={handleJoin} className="flex flex-col gap-3 sm:flex-row">
+      <form onSubmit={handleJoin} className="home-cta-join">
         <Input
           placeholder="Paste link or code"
           value={joinCode}
           onChange={(e) => setJoinCode(e.target.value)}
-          className="flex-1 border-white/50 bg-white/30"
+          className="border-white/50 bg-white/30"
         />
-        <Button type="submit" variant="secondary" size="lg">
+        <Button type="submit" variant="secondary" className="home-cta-btn">
           Join
         </Button>
       </form>

@@ -13,7 +13,7 @@ export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
         M
       </span>
       <span
-        className={`font-semibold tracking-tight text-[var(--meet-text)] transition-colors group-hover:text-[var(--meet-primary)] ${sizes[size]}`}
+        className={`font-semibold tracking-tight text-[var(--meet-text)] transition-colors group-hover:text-[var(--meet-primary)] max-[380px]:hidden ${sizes[size]}`}
       >
         MeetMe
       </span>
