@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useWhiteboardSync } from "@/components/meeting/whiteboard-sync";
 import {
   type WhiteboardStroke,
@@ -8,12 +7,15 @@ import {
 } from "@/lib/whiteboard-messages";
 import { useParticipants } from "@livekit/components-react";
 import {
+  ChevronDown,
+  ChevronUp,
   Circle,
   Eraser,
   Highlighter,
   Minus,
   Pencil,
   Redo2,
+  Settings2,
   Square,
   Trash2,
   UserRoundCog,
@@ -23,6 +25,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const COLORS = ["#ffffff", "#8ab4f8", "#34a853", "#fbbc04", "#ea4335", "#000000"];
 const WIDTHS = [2, 4, 8, 12];
+const TOOLS = [
+  { id: "pen", label: "Pen", Icon: Pencil },
+  { id: "highlighter", label: "Highlighter", Icon: Highlighter },
+  { id: "eraser", label: "Eraser", Icon: Eraser },
+  { id: "line", label: "Line", Icon: Minus },
+  { id: "rectangle", label: "Rectangle", Icon: Square },
+  { id: "circle", label: "Circle", Icon: Circle },
+] as const;
 
 type WhiteboardPanelProps = {
   open: boolean;
@@ -61,7 +71,10 @@ export function WhiteboardPanel({
   const [tool, setTool] = useState<WhiteboardTool>("pen");
   const [color, setColor] = useState(COLORS[0]);
   const [width, setWidth] = useState(4);
-  const [handoverOpen, setHandoverOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const assignRef = useRef<HTMLDivElement>(null);
 
   const nonAdminParticipants = useMemo(
     () =>
@@ -206,160 +219,216 @@ export function WhiteboardPanel({
 
   async function handleHandover(identity: string, name: string) {
     await handoverTo({ identity, name });
+    setSheetOpen(false);
+    setAssignOpen(false);
   }
 
   async function handleRevoke() {
     await revokeEditor();
+    setSheetOpen(false);
+    setAssignOpen(false);
   }
+
+  useEffect(() => {
+    if (!open) {
+      setSheetOpen(false);
+      setAssignOpen(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    function onResize() {
+      if (window.matchMedia("(min-width: 1024px)").matches) {
+        setSheetOpen(false);
+      } else {
+        setAssignOpen(false);
+      }
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!assignOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!assignRef.current?.contains(event.target as Node)) {
+        setAssignOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [assignOpen]);
 
   if (!open) return null;
 
   const readOnly = !canEdit;
+  const activeTool = TOOLS.find((item) => item.id === tool) ?? TOOLS[0];
+  const ActiveToolIcon = activeTool.Icon;
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-[#070b16]">
-      <header className="flex shrink-0 flex-col gap-2 border-b border-white/10 px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="font-medium text-white">Whiteboard</h2>
-            <p className="text-xs text-white/55">
-              {isHost
-                ? assignedEditor
-                  ? `You are editing (Admin) · ${assignedEditor.name} can also edit`
-                  : "You are editing (Admin)"
-                : canEdit
-                  ? "You are editing"
-                  : owner
-                    ? `View only — ${owner.name} is editing`
-                    : "View only — ask admin to assign you"}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {isHost ? (
-              <div className="relative">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setHandoverOpen((v) => !v)}
-                >
-                  <UserRoundCog className="h-4 w-4" />
-                  Assign editor
-                </Button>
-                {handoverOpen ? (
-                  <div className="absolute right-0 top-full z-30 mt-1 min-w-[220px] rounded-lg border border-[var(--meet-border)] bg-[var(--meet-surface)] py-1 shadow-lg">
-                    {assignedEditor ? (
-                      <div className="border-b border-[var(--meet-border)] px-3 py-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--meet-text-muted)]">
-                          Current editor
-                        </p>
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <span className="truncate text-sm text-[var(--meet-text)]">
-                            {assignedEditor.name}
-                          </span>
-                          <button
-                            type="button"
-                            className="shrink-0 text-xs text-[var(--meet-danger)] hover:underline"
-                            onClick={() => void handleRevoke()}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                    <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--meet-text-muted)]">
-                      Assign to
-                    </p>
-                    {assignCandidates.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-[var(--meet-text-muted)]">
-                        No other participants in the call yet
-                      </p>
-                    ) : (
-                      assignCandidates.map((participant) => (
-                        <button
-                          key={participant.identity}
-                          type="button"
-                          className="block w-full px-3 py-2 text-left text-sm text-[var(--meet-text)] hover:bg-[var(--meet-bg)]"
-                          onClick={() =>
-                            void handleHandover(
-                              participant.identity,
-                              participant.name,
-                            )
-                          }
-                        >
-                          {participant.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <Button size="sm" variant="ghost" onClick={onClose}>
-              <X className="h-4 w-4" />
-              Close
-            </Button>
-          </div>
-        </div>
-
+    <div className="meet-whiteboard" role="dialog" aria-label="Whiteboard">
+      <header className="meet-wb-chrome">
+        <p className="meet-wb-title">Whiteboard</p>
         {canEdit ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ["pen", Pencil],
-                ["highlighter", Highlighter],
-                ["eraser", Eraser],
-                ["line", Minus],
-                ["rectangle", Square],
-                ["circle", Circle],
-              ] as const
-            ).map(([t, Icon]) => (
-              <Button
-                key={t}
-                size="sm"
-                variant={tool === t ? "primary" : "secondary"}
-                onClick={() => setTool(t)}
-              >
-                <Icon className="h-4 w-4" />
-              </Button>
-            ))}
-            <div className="flex gap-1">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`h-6 w-6 rounded-full border-2 ${color === c ? "border-[var(--meet-primary)]" : "border-transparent"}`}
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(c)}
-                />
-              ))}
-            </div>
-            <select
-              value={width}
-              onChange={(e) => setWidth(Number(e.target.value))}
-              className="rounded-lg border border-[var(--meet-border)] bg-[var(--meet-surface)] px-2 py-1 text-sm text-[var(--meet-text)]"
-            >
-              {WIDTHS.map((w) => (
-                <option key={w} value={w}>
-                  {w}px
-                </option>
-              ))}
-            </select>
-            <Button size="sm" variant="secondary" onClick={handleUndo}>
-              <Redo2 className="h-4 w-4" />
-              Undo mine
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => void clearOwnStrokes()}>
-              <Trash2 className="h-4 w-4" />
-              Clear mine
-            </Button>
-          </div>
+          <p className="meet-wb-status">
+            <ActiveToolIcon />
+            {activeTool.label}
+            <span
+              className="meet-wb-status-swatch"
+              style={{ background: color }}
+            />
+            {width}px
+          </p>
         ) : (
-          <p className="text-sm text-white/55">
-            Ask the admin to assign you the whiteboard if you need to draw.
+          <p className="meet-wb-status is-muted">
+            {assignedEditor
+              ? `${assignedEditor.name} is drawing`
+              : "Waiting for the host to assign drawing"}
           </p>
         )}
+
+        <div className="meet-wb-desktop">
+          {canEdit ? (
+            <>
+              <div className="meet-wb-desktop-group" role="toolbar" aria-label="Draw">
+                {TOOLS.map((item) => {
+                  const Icon = item.Icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      title={item.label}
+                      aria-label={item.label}
+                      className={tool === item.id ? "is-active" : undefined}
+                      onClick={() => setTool(item.id)}
+                    >
+                      <Icon />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="meet-wb-desktop-group meet-wb-desktop-colors" role="toolbar" aria-label="Color">
+                {COLORS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={`Use ${value}`}
+                    className={color === value ? "is-active" : undefined}
+                    onClick={() => setColor(value)}
+                  >
+                    <span style={{ background: value }} />
+                  </button>
+                ))}
+              </div>
+              <div className="meet-wb-desktop-group" role="toolbar" aria-label="Stroke">
+                {WIDTHS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`meet-wb-width${width === value ? " is-active" : ""}`}
+                    onClick={() => setWidth(value)}
+                  >
+                    {value}px
+                  </button>
+                ))}
+              </div>
+              <div className="meet-wb-desktop-group">
+                <button type="button" title="Undo" aria-label="Undo" onClick={handleUndo}>
+                  <Redo2 />
+                </button>
+                <button
+                  type="button"
+                  title="Clear"
+                  aria-label="Clear"
+                  onClick={() => void clearOwnStrokes()}
+                >
+                  <Trash2 />
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="meet-wb-readonly">
+              {assignedEditor
+                ? `${assignedEditor.name} is drawing`
+                : "Waiting for the host to assign drawing"}
+            </p>
+          )}
+          {isHost ? (
+            <div className="meet-wb-desktop-assign" ref={assignRef}>
+              <button
+                type="button"
+                className={assignOpen ? "is-active" : undefined}
+                aria-expanded={assignOpen}
+                onClick={() => setAssignOpen((openAssign) => !openAssign)}
+              >
+                <UserRoundCog />
+                Assign
+                <ChevronDown />
+              </button>
+              {assignOpen ? (
+                <div className="meet-wb-assign-menu" role="menu">
+                  {assignedEditor ? (
+                    <div className="meet-wb-assign-current">
+                      <span>{assignedEditor.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => void handleRevoke()}
+                      >
+                        Take back
+                      </button>
+                    </div>
+                  ) : null}
+                  {assignCandidates.length === 0 ? (
+                    <p className="meet-wb-assign-empty">No other people yet</p>
+                  ) : (
+                    assignCandidates.map((participant) => (
+                      <button
+                        key={participant.identity}
+                        type="button"
+                        onClick={() =>
+                          void handleHandover(
+                            participant.identity,
+                            participant.name,
+                          )
+                        }
+                      >
+                        {participant.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className={`meet-wb-tools-btn${sheetOpen ? " is-open" : ""}`}
+          aria-expanded={sheetOpen}
+          aria-controls="meet-wb-sheet"
+          onClick={() => setSheetOpen((openSheet) => !openSheet)}
+        >
+          <Settings2 />
+          Tools
+          <ChevronUp />
+        </button>
+        <button
+          type="button"
+          className="meet-wb-close"
+          onClick={onClose}
+          aria-label="Close whiteboard"
+        >
+          <X />
+        </button>
       </header>
-      <div className="relative min-h-0 flex-1">
+
+      <div
+        className="meet-wb-canvas"
+        onPointerDownCapture={() => {
+          if (sheetOpen) setSheetOpen(false);
+        }}
+      >
         <canvas
           ref={canvasRef}
           className={`absolute inset-0 touch-none ${readOnly ? "cursor-default" : "cursor-crosshair"}`}
@@ -369,6 +438,137 @@ export function WhiteboardPanel({
           onPointerLeave={onPointerUp}
         />
       </div>
+
+      {sheetOpen ? (
+        <>
+          <button
+            type="button"
+            className="meet-wb-sheet-backdrop"
+            aria-label="Close tools"
+            onClick={() => setSheetOpen(false)}
+          />
+          <div
+            id="meet-wb-sheet"
+            className="meet-wb-sheet"
+            ref={sheetRef}
+            role="dialog"
+            aria-label="Whiteboard tools"
+          >
+            <div className="meet-wb-sheet-handle" />
+            {canEdit ? (
+              <>
+                <section className="meet-wb-section">
+                  <h3>Draw</h3>
+                  <div className="meet-wb-grid">
+                    {TOOLS.map((item) => {
+                      const Icon = item.Icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={tool === item.id ? "is-active" : undefined}
+                          onClick={() => setTool(item.id)}
+                        >
+                          <Icon />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="meet-wb-section">
+                  <h3>Color</h3>
+                  <div className="meet-wb-colors">
+                    {COLORS.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-label={`Use ${value}`}
+                        className={color === value ? "is-active" : undefined}
+                        onClick={() => setColor(value)}
+                      >
+                        <span style={{ background: value }} />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="meet-wb-section">
+                  <h3>Stroke</h3>
+                  <div className="meet-wb-pills">
+                    {WIDTHS.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={width === value ? "is-active" : undefined}
+                        onClick={() => setWidth(value)}
+                      >
+                        {value}px
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="meet-wb-section">
+                  <h3>Board</h3>
+                  <div className="meet-wb-pills">
+                    <button type="button" onClick={handleUndo}>
+                      <Redo2 />
+                      Undo
+                    </button>
+                    <button type="button" onClick={() => void clearOwnStrokes()}>
+                      <Trash2 />
+                      Clear
+                    </button>
+                  </div>
+                </section>
+              </>
+            ) : (
+              <p className="meet-wb-sheet-note">
+                {assignedEditor
+                  ? `${assignedEditor.name} is drawing. Only the assigned person can edit.`
+                  : "Waiting for the host to assign drawing."}
+              </p>
+            )}
+
+            {isHost ? (
+              <section className="meet-wb-section">
+                <h3>Assign drawing</h3>
+                <div className="meet-wb-assign">
+                  {assignedEditor ? (
+                    <div className="meet-wb-assign-current">
+                      <span>{assignedEditor.name}</span>
+                      <button type="button" onClick={() => void handleRevoke()}>
+                        Take back
+                      </button>
+                    </div>
+                  ) : null}
+                  {assignCandidates.length === 0 ? (
+                    <p className="meet-wb-assign-empty">No other people yet</p>
+                  ) : (
+                    assignCandidates.map((participant) => (
+                      <button
+                        key={participant.identity}
+                        type="button"
+                        onClick={() =>
+                          void handleHandover(
+                            participant.identity,
+                            participant.name,
+                          )
+                        }
+                      >
+                        <UserRoundCog />
+                        {participant.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

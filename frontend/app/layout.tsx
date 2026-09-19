@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
+import { PwaRegister } from "@/components/pwa/pwa-register";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +19,22 @@ export const metadata: Metadata = {
   title: "MeetMe — Rooms that belong to you",
   description:
     "Unlimited video meetings with waiting rooms, whiteboard, and host controls.",
+  applicationName: "MeetMe",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "MeetMe",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2f49d1",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -32,7 +50,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         style={{ backgroundColor: "#eef2f8" }}
         suppressHydrationWarning
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <PwaRegister />
+          <InstallPrompt />
+        </AuthProvider>
       </body>
     </html>
   );

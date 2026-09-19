@@ -62,11 +62,11 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-6 pb-28 sm:px-6 sm:py-10">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--meet-accent)]">
         Platform
       </p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--meet-text)]">
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--meet-text)] sm:text-3xl">
         Admin dashboard
       </h1>
       <p className="mt-1 text-[var(--meet-text-muted)]">
@@ -186,7 +186,7 @@ export default function AdminPage() {
           {meetings.map((meeting) => (
             <div
               key={meeting.id}
-              className="flex items-center justify-between rounded-2xl border border-[var(--meet-border)] bg-[var(--meet-surface)] p-4"
+              className="flex flex-col gap-3 rounded-2xl border border-[var(--meet-border)] bg-[var(--meet-surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="font-medium text-[var(--meet-text)]">
@@ -199,6 +199,7 @@ export default function AdminPage() {
               <Button
                 size="sm"
                 variant="danger"
+                className="self-start sm:self-auto"
                 onClick={() => deleteMeeting(meeting.id)}
               >
                 <Trash2 className="h-4 w-4" />

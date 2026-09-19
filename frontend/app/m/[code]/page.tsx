@@ -26,7 +26,7 @@ const MeetingRoom = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--meet-bg)]">
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--meet-bg)]">
         <Spinner />
       </div>
     ),
@@ -288,7 +288,7 @@ export default function MeetingPage() {
 
   if (loading || restoring) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--meet-bg)]">
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--meet-bg)]">
         <Spinner />
       </div>
     );
@@ -320,12 +320,12 @@ export default function MeetingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--meet-bg)]">
-      <header className="flex h-16 items-center px-6">
+    <div className="flex min-h-dvh flex-col bg-[var(--meet-bg)]">
+      <header className="flex h-14 items-center px-4 pt-[env(safe-area-inset-top)] sm:h-16 sm:px-6">
         <Logo size="sm" />
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-8">
+      <main className="flex flex-1 items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <Card className="w-full max-w-lg">
           {error ? (
             <div className="mb-6 flex items-start gap-3 rounded-xl bg-[var(--meet-danger)]/10 p-4 text-sm text-[var(--meet-danger)]">

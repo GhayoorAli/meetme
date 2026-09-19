@@ -236,23 +236,8 @@ function MeetingChrome({
           onToast={pushToast}
         >
         <ScreenShareHighlighterProvider localIdentity={localIdentity}>
-      <div className="meet-room-shell">
-        <div className="meet-room-stage">
-          <MeetingVideoStage />
-          <ScreenShareHighlighterOverlay
-            localIdentity={localIdentity}
-            authorName={localName}
-          />
-          <WhiteboardPanel
-            open={whiteboardOpen}
-            onClose={() => setWhiteboardOpen(false)}
-            localIdentity={localIdentity}
-            authorName={localName}
-            isHost={isHost}
-          />
-          <MeetingToasts toasts={toasts} onDismiss={dismissToast} />
-        </div>
-
+      <div className={`meet-room-shell${whiteboardOpen ? " is-board-open" : ""}`}>
+        {!whiteboardOpen ? (
         <header className="meet-topbar">
           <div className="meet-topbar-title">
             <p>{meetingTitle}</p>
@@ -274,9 +259,28 @@ function MeetingChrome({
             </button>
           </div>
         </header>
+        ) : null}
+
+        <div className="meet-room-stage">
+          <MeetingVideoStage />
+          <ScreenShareHighlighterOverlay
+            localIdentity={localIdentity}
+            authorName={localName}
+          />
+          <MeetingToasts toasts={toasts} onDismiss={dismissToast} />
+        </div>
+
+        <WhiteboardPanel
+          open={whiteboardOpen}
+          onClose={() => setWhiteboardOpen(false)}
+          localIdentity={localIdentity}
+          authorName={localName}
+          isHost={isHost}
+        />
 
         <div className="meet-dock">
           <div className="meet-dock-inner">
+            <div className="meet-dock-tools">
             <MeetingMediaControls />
             <ScreenShareControls
               meetingCode={meetingCode}
@@ -320,6 +324,7 @@ function MeetingChrome({
                 End for all
               </button>
             ) : null}
+            </div>
             <button
               type="button"
               className="meet-leave-btn"
@@ -412,7 +417,7 @@ export function MeetingRoom({
     <div className="meet-room">
       <div className="relative flex-1 overflow-hidden" style={{ height: "100%" }}>
         {connectionError ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 p-6">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 p-4 sm:p-6">
             <div className="meet-error-card">
               <AlertCircle className="mx-auto h-10 w-10 text-[var(--meet-danger)]" />
               <h2 className="mt-4 text-lg font-medium text-white">
@@ -439,7 +444,7 @@ export function MeetingRoom({
                   </code>
                 </p>
               ) : null}
-              <div className="mt-6 flex justify-center gap-3">
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
                 <Button onClick={handleRetry}>
                   <RefreshCw className="h-4 w-4" />
                   Try again
