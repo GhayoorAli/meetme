@@ -1,11 +1,5 @@
 # MeetMe
 
-A self-hosted Google Meet–style video platform with waiting rooms, guest hosting, and real-time collaboration — built with Next.js, PostgreSQL, Prisma, and LiveKit.
-
-[Live demo](https://www.meet-me.tech) · [GitHub](https://github.com/GhayoorAli/meetme)
-
----
-
 ## The problem
 
 Google Meet’s free plan caps meetings at about one hour, and it is light on built-in tools like recording and a shared whiteboard. I built MeetMe as my own meet-style platform with no meeting time limit, plus host-controlled recording, a collaborative whiteboard, waiting rooms, guest hosting, and screen-share tools — so calls are not cut short and collaboration is not bolted on through other apps.
@@ -14,7 +8,9 @@ Google Meet’s free plan caps meetings at about one hour, and it is light on bu
 
 ## My role
 
-Solo full-stack developer. I designed and built the product end to end: Next.js UI and REST API, jose JWT sessions, Prisma / PostgreSQL schema, LiveKit rooms and data-channel sync, Docker local stack, and production deploy on Vercel, Supabase Postgres, and LiveKit Cloud.
+Solo full-stack developer. I designed and built the product end to end: Next.js UI and REST API, jose JWT sessions, Prisma / PostgreSQL schema, LiveKit rooms and data-channel sync, Progressive Web App (PWA) install and offline shell, responsive phone/tablet meeting UI, Docker local stack, and production deploy on Vercel, Supabase Postgres, and LiveKit Cloud.
+
+This is a **web PWA**, not a React Native app. Phones and tablets use the same Next.js client, adapted for small screens and add-to-home-screen install.
 
 ---
 
@@ -24,15 +20,16 @@ Solo full-stack developer. I designed and built the product end to end: Next.js 
 - React
 - TypeScript
 - Tailwind CSS
+- Progressive Web App (Web App Manifest + Service Worker)
 - Node.js
 - REST API
-- SupaBase
+- Supabase
 - PostgreSQL
 - Docker
 - Vercel
 - Git / GitHub
 
-Next.js 16 (App Router) serves both the UI and `/api`. Prisma talks to PostgreSQL. LiveKit handles WebRTC media and in-call data messages. Locally, Docker Compose runs Postgres and LiveKit; production uses Vercel + Supabase + LiveKit Cloud.
+Next.js 16 (App Router) serves both the UI and `/api`. Prisma talks to PostgreSQL. LiveKit handles WebRTC media and in-call data messages. The web client is installable as a PWA via `manifest.ts`, `public/sw.js`, and Apple web-app meta. Locally, Docker Compose runs Postgres and LiveKit; production uses Vercel + Supabase + LiveKit Cloud.
 
 ---
 
@@ -47,6 +44,9 @@ Next.js 16 (App Router) serves both the UI and `/api`. Prisma talks to PostgreSQ
 - Host-controlled recording and screen-share permissions
 - Register / login, dashboard, and admin panel
 - Join or host without an account
+- **PWA:** installable from the browser (home-screen icon, standalone display, theme color, Apple web-app support)
+- **Responsive meeting UI:** larger touch targets, mobile-safe media menus, and a whiteboard that uses a Tools bottom sheet on phone/tablet while keeping the full toolbar on laptop
+- Landing, auth, dashboard, and admin layouts adapted for phone and tablet
 
 ---
 
@@ -55,7 +55,7 @@ Next.js 16 (App Router) serves both the UI and `/api`. Prisma talks to PostgreSQ
 ```mermaid
 graph TB
     subgraph clients ["Clients"]
-        Web["Next.js web app"]
+        Web["Next.js web + PWA"]
         LKWeb["LiveKit JS"]
         Web --> LKWeb
     end
@@ -78,31 +78,6 @@ graph TB
     Token -->|"JWT"| Web
     LKWeb -->|"WebRTC"| LKS
 ```
-
-### What Next.js handles
-
-- Landing page, auth screens, user dashboard, admin panel
-- REST API: auth, meetings, waiting room, permissions, admin
-- Meeting join flow (waiting room UI, session restore after refresh)
-- LiveKit room UI: camera, mic, layout, participants
-- **Real-time features** synced via LiveKit **data channels** (not API polling):
-  - Hand raise
-  - Whiteboard strokes and editor assignment
-  - Screen-share state
-  - Screen-share highlighter (normalized coordinates)
-  - Recording permission sync
-- Session: httpOnly `meetme_session` cookie
-
-### What the API handles
-
-- User registration, login, admin roles
-- Meeting CRUD, unique meeting codes, guest-host tokens
-- Waiting room: join requests, admit / deny, participant status
-- LiveKit access token generation
-- Permission workflows: recording and screen-share request / approve / deny
-- Admin API: platform stats, user management, meeting cleanup
-
-Whiteboard, in-browser recording UI, and the share highlighter stay **web-first**.
 
 ---
 
@@ -176,20 +151,51 @@ sequenceDiagram
 
 **Solution:** Share is capped (720p / 10 fps), the camera drops to a low layer while sharing, background blur pauses, and local recording uses a lighter 360p / 6 fps clone of the audio.
 
+### Phone and tablet without a native app
+
+**Challenge:** Building a separate React Native client would duplicate auth, join flow, and LiveKit UI. A plain desktop meeting chrome also overflowed on small screens (whiteboard tools cut off, thin CTAs, mic/cam menus hard to open).
+
+**Solution:** Ship a **Progressive Web App** on the same Next.js codebase: Web App Manifest, service worker, install prompt, and Apple web-app meta. Responsive CSS adapts landing and meeting chrome. Whiteboard keeps every feature: a **Tools** bottom sheet on mobile/tablet, full on-screen toolbar from 1024px up. Meeting title and dock stay hidden while the board is open so they do not cover drawing tools. The service worker is disabled in local development so HMR and cache do not hide UI updates.
+
+---
+
+## PWA & responsive mobile
+
+MeetMe is installable from Chrome / Safari as a web app. There is no separate native binary for this phase.
+
+| Piece | Location | Role |
+|-------|----------|------|
+| Web App Manifest | `frontend/app/manifest.ts` | Name, icons, `standalone` display, theme color |
+| App icons | `frontend/app/icon.tsx`, `apple-icon.tsx`, `icons/` | Browser and home-screen icons |
+| Service worker | `frontend/public/sw.js` | Cache shell assets; registered from `components/pwa/pwa-register.tsx` |
+| Install UI | `components/pwa/install-prompt.tsx` | `beforeinstallprompt` / “Add to Home Screen” |
+| Apple meta | `app/layout.tsx` (`appleWebApp`, `viewportFit: cover`) | iOS status bar and safe areas |
+| Mobile meeting chrome | `meeting-room.css`, dock / media controls | Touch-friendly trays, hang-up, people panel |
+| Whiteboard | `whiteboard-panel.tsx` | Tools sheet under 1024px; full toolbar on laptop |
+
+**How to try the PWA locally**
+
+1. Run the app (`pnpm dev` in `frontend/`).
+2. Open the site in Chrome (desktop device mode or a phone on the same LAN).
+3. Use **Install app** / **Add to Home Screen** when the prompt appears (HTTPS or localhost required for install).
+
 ---
 
 ## Project structure
 
 ```
 meetme/
-├── frontend/          # Next.js web app + API (port 3000)
-│   ├── app/           # Pages and Route Handlers under app/api
-│   ├── components/    # UI + meeting-room feature modules
-│   ├── lib/server/    # Auth, meetings, LiveKit, Prisma
-│   └── prisma/        # Schema and migrations
-├── scripts/           # dev.sh, dev-local.ps1
-├── docker-compose.yml # PostgreSQL + LiveKit
-└── livekit.yaml       # LiveKit server config (reference)
+├── frontend/                 # Next.js web app + API (port 3000)
+│   ├── app/                  # Pages, Route Handlers, manifest + icons
+│   ├── components/
+│   │   ├── meeting/          # Room UI, whiteboard, media controls
+│   │   └── pwa/              # Service worker register + install prompt
+│   ├── public/sw.js          # PWA service worker
+│   ├── lib/server/           # Auth, meetings, LiveKit, Prisma
+│   └── prisma/               # Schema and migrations
+├── scripts/                  # dev.sh, dev-local.ps1
+├── docker-compose.yml        # PostgreSQL + LiveKit
+└── livekit.yaml              # LiveKit server config (reference)
 ```
 
 ---
@@ -382,9 +388,3 @@ Reuse a LiveKit Cloud project (no Agents). Copy the WebSocket URL (`wss://`) and
 ## License
 
 MIT — add a `LICENSE` file before publishing if you want to open-source the repo.
-
----
-
-## Author
-
-Built as a personal, self-hosted meeting solution. Contributions and issues welcome.
